@@ -2,6 +2,7 @@
   "name": "EduAI Platform",
   "description": "An AI-powered educational platform for CBSE Classes I–XII, featuring course management, student tracking, AI-evaluated tests, and Google Drive integration. An AI bot assists users with resources and doubt-solving.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "camera"
   ]
 }

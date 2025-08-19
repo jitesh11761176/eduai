@@ -3,7 +3,7 @@ import { Course, Project, User, KanbanTask, KanbanStatus } from '../../types';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import { ArrowLeft, CheckSquare, Clock, FileText, MessageSquare, Plus, Send } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 interface ProjectWorkspacePageProps {
   course: Course;

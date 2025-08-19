@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, Student, ChatMessage } from '../../../types';
 import Card from '../../common/Card';
 import Button from '../../common/Button';
-import { Video, Send, Tv, MessageCircle, Edit2, Users, Trash2 } from 'lucide-react';
+import { Video as VideoIcon, Send, Tv, MessageCircle, Edit2, Users, Trash2 } from 'lucide-react';
 import Whiteboard from './Whiteboard';
+import Video from './Video';
 
 interface CourseLiveClassTabProps {
   user: User;
@@ -66,7 +67,7 @@ const CourseLiveClassTab: React.FC<CourseLiveClassTabProps> = ({ user, allStuden
             ) : (
                <>
                 <div className="w-full h-full bg-black flex items-center justify-center">
-                    <p className="text-white font-bold text-2xl">[ Teacher Video Feed ]</p>
+                    <Video isTeacher={isTeacher}/>
                 </div>
                 <div className="absolute bottom-2 left-2 flex space-x-2 p-2 bg-black/50 rounded-lg">
                     {enrolledStudents.slice(0, 4).map(s => (
