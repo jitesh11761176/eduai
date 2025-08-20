@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { generateCourseDetailsWithAI } from '../../services/geminiService';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { Course } from '../../types';
@@ -13,12 +14,22 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose, 
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
   const [classLevel, setClassLevel] = useState('');
+  const [description, setDescription] = useState('');
+  const [chapters, setChapters] = useState<string[]>([]);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isAIFilling, setIsAIFilling] = useState(false);
 
   useEffect(() => {
     // Basic validation
-    setIsFormValid(title.trim() !== '' && subject.trim() !== '' && classLevel.trim() !== '' && !isNaN(Number(classLevel)));
-  }, [title, subject, classLevel]);
+    setIsFormValid(
+      title.trim() !== '' &&
+      subject.trim() !== '' &&
+      classLevel.trim() !== '' &&
+      !isNaN(Number(classLevel)) &&
+      description.trim() !== '' &&
+      chapters.length > 0
+    );
+  }, [title, subject, classLevel, description, chapters]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +39,30 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose, 
       title,
       subject,
       classLevel: Number(classLevel),
+      description,
+      chapters: chapters.map((ch, idx) => ({ id: `ch${idx+1}`, title: ch, materials: [], completed: false })),
     });
-    
+
     // Reset form and close modal
     setTitle('');
     setSubject('');
     setClassLevel('');
+    setDescription('');
+    setChapters([]);
     onClose();
+  };
+
+  const handleAIFill = async () => {
+    setIsAIFilling(true);
+    try {
+      const aiResult = await generateCourseDetailsWithAI(title, subject, classLevel);
+      setDescription(aiResult.description);
+      setChapters(aiResult.chapters);
+    } catch (e) {
+      alert('AI could not generate course details.');
+    } finally {
+      setIsAIFilling(false);
+    }
   };
 
   return (
@@ -51,6 +79,41 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose, 
             placeholder="e.g., Introduction to Calculus"
             required
           />
+        </div>
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Course Description</label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            placeholder="A brief summary of the course..."
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Chapters</label>
+          <ul className="mb-2">
+            {chapters.map((ch, idx) => (
+              <li key={idx} className="text-gray-700">{idx+1}. {ch}</li>
+            ))}
+          </ul>
+          <input
+            type="text"
+            placeholder="Add chapter title and press Enter"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                setChapters(prev => [...prev, e.currentTarget.value.trim()]);
+                e.currentTarget.value = '';
+              }
+            }}
+          />
+        </div>
+        <div className="flex justify-end">
+          <Button type="button" variant="secondary" onClick={handleAIFill} disabled={isAIFilling || !title || !subject || !classLevel}>
+            {isAIFilling ? 'Filling with AI...' : 'AI Fill'}
+          </Button>
         </div>
         <div>
           <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Subject</label>

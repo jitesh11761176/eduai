@@ -33,11 +33,11 @@ export interface InteractiveContent {
 
 export interface CourseMaterial {
   id: string;
-  type: 'file' | 'text' | 'video' | 'interactive';
+  type: 'file' | 'text' | 'video' | 'interactive' | 'drive';
   title: string;
   fileId?: string; // For 'file' type (Mock Google Drive File ID)
   content?: string; // For 'text' type
-  url?: string; // For 'video' type
+  url?: string; // For 'video' or 'drive' type
   interactiveContent?: InteractiveContent;
 }
 

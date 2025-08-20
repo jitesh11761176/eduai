@@ -19,6 +19,7 @@ import ProjectWorkspacePage from './components/course/ProjectWorkspacePage';
 import * as api from './services/apiService';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import TeacherAnalyticsPage from './components/analytics/TeacherAnalyticsPage';
+import { signInWithGoogle, FirebaseUser } from './services/firebase';
 import ParentDashboard from './components/dashboard/ParentDashboard';
 import Toast from './components/common/Toast';
 import { Lightbulb, UserCheck, Users, Shield, Settings, UserCog, Briefcase, ClipboardEdit, GitMerge, Mic, TrendingUp, Sparkles } from 'lucide-react';
@@ -224,6 +225,8 @@ const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({ onSelectRole,
 
 const App: React.FC = () => {
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    // Store Google user info temporarily after login
+    const [googleProfile, setGoogleProfile] = useState<{ name: string; email: string; photoURL?: string } | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -301,20 +304,34 @@ const App: React.FC = () => {
     }, [user, submissions, courses, navigate]);
 
 
+
     const handleLogin = useCallback((role: UserRole) => {
-        if (role === 'parent') {
-            setUser(mockParent);
-        } else if (role === 'principal') {
-            setUser(mockPrincipal);
-        } else {
-            setUser(mockUser(role));
-        }
+        // Always use mock data for user, but use Google photo/name if available
+        setUser(() => {
+            if (role === 'parent') {
+                return mockParent;
+            } else if (role === 'principal') {
+                return mockPrincipal;
+            } else {
+                const base = mockUser(role);
+                if (googleProfile) {
+                    return {
+                        ...base,
+                        name: googleProfile.name,
+                        email: googleProfile.email,
+                        avatarUrl: googleProfile.photoURL || (googleProfile.name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(googleProfile.name.charAt(0))}` : base.avatarUrl)
+                    };
+                }
+                return base;
+            }
+        });
         setView('dashboard');
         setLoginStep('initial'); // Reset for next login
-    }, []);
+    }, [googleProfile]);
 
     const handleLogout = useCallback(() => {
-        setUser(null);
+    setUser(null);
+    setGoogleProfile(null);
         setView('dashboard');
         setViewContext({});
         setViewingSubmissionId(null);
@@ -322,7 +339,20 @@ const App: React.FC = () => {
         setLoginStep('initial'); // Reset login flow
     }, []);
     
-    const handleGoogleSignIn = () => setLoginStep('roleSelection');
+    // Google sign-in handler using Firebase
+    const handleGoogleSignIn = async () => {
+        try {
+            const firebaseUser: FirebaseUser = await signInWithGoogle();
+            setGoogleProfile({
+                name: firebaseUser.displayName || firebaseUser.email || 'Google User',
+                email: firebaseUser.email || '',
+                photoURL: firebaseUser.photoURL || undefined
+            });
+            setLoginStep('roleSelection');
+        } catch (error) {
+            alert('Google sign-in failed. Please try again.');
+        }
+    };
     const handleBackToLogin = () => setLoginStep('initial');
 
     const authContextValue = useMemo(() => ({ user, logout: handleLogout }), [user, handleLogout]);
