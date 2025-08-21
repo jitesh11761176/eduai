@@ -131,7 +131,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
     setIsPickerOpen(true);
   };
 
-  const handleOpenAddModal = (chapterId: string, type: 'text' | 'video' | 'interactive') => {
+  const handleOpenAddModal = (chapterId: string, type: 'text' | 'video' | 'interactive' | 'drive') => {
     setActiveChapterId(chapterId);
     setEditingMaterial(null);
     setModalType(type);
@@ -283,24 +283,43 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                 style={{ left: explainTool.x, top: explainTool.y }}
                 onMouseDown={(e) => e.stopPropagation()}
             >
-                <button
-                    onClick={() => setIsExplainModalOpen(true)}
-                    className="flex items-center space-x-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition"
-                >
-                    <Wand2 size={16} />
-                    <span className="text-sm font-semibold">Explain with AI</span>
-                </button>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsExplainModalOpen(true)}
+          onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') setIsExplainModalOpen(true); }}
+          className="flex items-center space-x-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition"
+        >
+          <Wand2 size={16} />
+          <span className="text-sm font-semibold">Explain with AI</span>
+        </div>
             </div>
         )}
         <div className="space-y-4">
             {course.chapters.map(chapter => (
             <Card key={chapter.id} className="p-0 overflow-hidden">
-                <button aria-expanded={openChapters.has(chapter.id)} onClick={() => toggleChapter(chapter.id)} className="w-full flex justify-between items-center p-4 text-left cursor-pointer hover:bg-gray-50">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={openChapters.has(chapter.id)}
+                  onClick={() => toggleChapter(chapter.id)}
+                  onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') toggleChapter(chapter.id); }}
+                  className="w-full flex justify-between items-center p-4 text-left cursor-pointer hover:bg-gray-50"
+                >
                 <div className="flex items-center space-x-3"><BookOpen className="text-primary-500"/><h3 className="text-lg font-semibold text-gray-800">{chapter.title}</h3></div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                     {user.role === 'teacher' && (
                     <div className="flex items-center space-x-1 p-1 bg-gray-100 rounded-lg">
-                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleAddFileClick(chapter.id); }}><FolderOpen size={16} className="mr-1" /> File</Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleOpenAddModal(chapter.id, 'drive');
+                          }}
+                        >
+                          <FolderOpen size={16} className="mr-1" /> File
+                        </Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'text'); }}><Type size={16} className="mr-1" /> Note</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'video'); }}><Video size={16} className="mr-1" /> Video</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'interactive'); }}>Quiz</Button>
@@ -308,7 +327,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                     )}
                     {openChapters.has(chapter.id) ? <ChevronUp /> : <ChevronDown />}
                 </div>
-                </button>
+                </div>
                 
                 {openChapters.has(chapter.id) && (
                 <>

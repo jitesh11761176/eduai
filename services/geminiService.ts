@@ -515,10 +515,11 @@ export const explainTextDifferently = async (text: string, mode: 'simple' | 'exa
     }
 };
 
-export const generateStudyPlan = async (goal: string, targetDate: string, performanceData: any): Promise<StudyPlan> => {
+export const generateStudyPlan = async (goal: string, targetDate: string, performanceData: any, todayStr?: string): Promise<StudyPlan> => {
     const prompt = `
         **Context:** You are an expert AI academic coach. A student needs a personalized study plan.
 
+        **Today's Date:** ${todayStr || new Date().toISOString().split('T')[0]}
         **Student's Goal:** ${goal}
         **Target Completion Date:** ${targetDate}
 

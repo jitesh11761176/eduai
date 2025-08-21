@@ -36,8 +36,12 @@ const StudyPlannerModal: React.FC<StudyPlannerModalProps> = ({ isOpen, onClose, 
         };
     });
 
+    // Pass today's date to the AI for accurate planning
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
     try {
-      const result = await generateStudyPlan(goal, targetDate, performanceData);
+      const result = await generateStudyPlan(goal, targetDate, performanceData, todayStr);
       setPlan(result);
     } catch (err) {
       console.error(err);
