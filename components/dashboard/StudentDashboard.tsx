@@ -324,9 +324,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, courses, subm
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {filteredCourses.map(course => {
-                        const courseProgressData = user.courses.find(c => c.courseId === course.id);
-                        const progress = courseProgressData ? courseProgressData.progress : 0;
-                        
+                        // Defensive: Only use user.courses if it exists and is an array
+                        let progress = 0;
+                        if (Array.isArray(user.courses)) {
+                            const courseProgressData = user.courses.find(c => c.courseId === course.id);
+                            progress = courseProgressData ? courseProgressData.progress : 0;
+                        }
                         return (
                         <Card key={course.id} className="flex flex-col" onClick={() => onSelectCourse(course.id)}>
                             <div className="p-6 flex-grow">

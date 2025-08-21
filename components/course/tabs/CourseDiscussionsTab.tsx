@@ -37,7 +37,7 @@ const CourseDiscussionsTab: React.FC<CourseDiscussionsTabProps> = ({ course, use
 
       <Card className="p-0">
         <ul className="divide-y divide-gray-200">
-          {course.discussionThreads.length > 0 ? (
+          {Array.isArray(course.discussionThreads) && course.discussionThreads.length > 0 ? (
             course.discussionThreads.map(thread => (
               <li key={thread.id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => onNavigate('discussionThread', { courseId: course.id, threadId: thread.id })}>
                 <div className="flex justify-between items-start">

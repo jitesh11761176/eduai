@@ -1,7 +1,44 @@
+// AI: Generate course description and chapters
+export const generateCourseDetailsWithAI = async (title: string, subject: string, classLevel: string | number): Promise<{ description: string, chapters: string[] }> => {
+    const prompt = `
+        You are an expert curriculum designer for Indian schools. Given the following course details, generate:
+        1. A concise, engaging course description (2-3 sentences)
+        2. A list of 5-8 chapter titles that would make up a logical syllabus for this course.
+
+        Respond as a JSON object with keys: description (string), chapters (string[]).
+
+        Course Title: ${title}
+        Subject: ${subject}
+        Class Level: ${classLevel}
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                systemInstruction: "Respond as a valid JSON object with keys: description (string), chapters (string[]).",
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        description: { type: Type.STRING },
+                        chapters: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ["description", "chapters"]
+                }
+            }
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (error) {
+        console.error("Error generating course details with AI:", error);
+        throw new Error("Failed to generate course details with AI.");
+    }
+};
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { Course, CourseMaterial, Chapter, TestSubmission, Question, GeneratedQuestion, FocusPlan, ClassInsights, StudyPlan, DetailedAiFeedback, LessonPlan, CareerCounselorReport } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
   console.warn("API_KEY environment variable not set. Gemini API calls will fail.");
@@ -478,10 +515,11 @@ export const explainTextDifferently = async (text: string, mode: 'simple' | 'exa
     }
 };
 
-export const generateStudyPlan = async (goal: string, targetDate: string, performanceData: any): Promise<StudyPlan> => {
+export const generateStudyPlan = async (goal: string, targetDate: string, performanceData: any, todayStr?: string): Promise<StudyPlan> => {
     const prompt = `
         **Context:** You are an expert AI academic coach. A student needs a personalized study plan.
 
+        **Today's Date:** ${todayStr || new Date().toISOString().split('T')[0]}
         **Student's Goal:** ${goal}
         **Target Completion Date:** ${targetDate}
 

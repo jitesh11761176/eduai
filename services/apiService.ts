@@ -1,5 +1,6 @@
 import { mockCourses, mockStudents, mockTeachers, mockSubmissions, mockNotifications, mockBadges } from '../data/mockData';
 import { Course, Student, Teacher, TestSubmission, CourseMaterial, Test, UserRole, Announcement, Notification, View, DiscussionThread, DiscussionPost, CalendarEvent, Rubric } from '../types';
+import { addMaterialToChapter } from './firebase';
 
 // --- In-memory database simulation ---
 let coursesDB: Course[] = JSON.parse(JSON.stringify(mockCourses));
@@ -96,29 +97,9 @@ export const createAnnouncement = async (courseId: string, authorName: string, t
 };
 
 export const createCourseMaterial = async (courseId: string, chapterId: string, material: Omit<CourseMaterial, 'id'>): Promise<CourseMaterial> => {
-    await delay(300);
-    const course = coursesDB.find(c => c.id === courseId);
-    if (!course) throw new Error("Course not found");
-
-    const chapter = course.chapters.find(ch => ch.id === chapterId);
-    if (!chapter) throw new Error("Chapter not found");
-
-    const newMaterial: CourseMaterial = {
-        id: `mat_${Date.now()}`,
-        ...material,
-    };
-    chapter.materials.push(newMaterial);
-    
-    // Gamification: Award points for completing a chapter
-    const student = studentsDB.find(s => s.id === 'student01'); // Assume current user
-    if (student) {
-        chapter.completed = true; // Mark as completed
-        student.points += 10; // Award points
-        student.learningStreak += 1; // Increment streak
-        createNotification(student.id, `+10 points for completing chapter "${chapter.title}"!`);
-    }
-
-    return JSON.parse(JSON.stringify(newMaterial));
+    // Use Firestore helper
+    const newMaterial = await addMaterialToChapter(courseId, chapterId, material);
+    return newMaterial;
 };
 
 export const updateCourseMaterial = async (courseId: string, chapterId: string, material: CourseMaterial): Promise<CourseMaterial> => {

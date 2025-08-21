@@ -3,7 +3,6 @@ import { Course, User, CourseMaterial, Chapter, TestSubmission, InteractiveConte
 import Card from '../../common/Card';
 import Button from '../../common/Button';
 import { BookOpen, FolderOpen, Type, Video, ChevronDown, ChevronUp, Download, Edit, Trash2, Users, Wand2, FileText, BarChart3, Waves } from 'lucide-react';
-import GoogleDrivePickerModal from '../GoogleDrivePickerModal';
 import AddOrEditMaterialModal from '../AddOrEditMaterialModal';
 import { MaterialIcon } from '../CourseDetail';
 import ExplainTextModal from '../../student/ExplainTextModal';
@@ -132,7 +131,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
     setIsPickerOpen(true);
   };
 
-  const handleOpenAddModal = (chapterId: string, type: 'text' | 'video' | 'interactive') => {
+  const handleOpenAddModal = (chapterId: string, type: 'text' | 'video' | 'interactive' | 'drive') => {
     setActiveChapterId(chapterId);
     setEditingMaterial(null);
     setModalType(type);
@@ -184,37 +183,47 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
 
   const renderMaterialContent = (material: CourseMaterial) => {
     switch (material.type) {
-        case 'text':
-            return (
-              <div onMouseUp={handleTextSelection} className="p-4 bg-gray-50 border-t">
-                  <p className="text-gray-700 whitespace-pre-wrap">{material.content}</p>
-                   {user.role === 'student' && material.content && (
-                     <div className="mt-4 pt-3 border-t flex items-center gap-2">
-                        <span className="text-xs font-semibold text-gray-500">AI Tools:</span>
-                        <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'summary')}><FileText size={14} className="mr-1.5"/>Summarize</Button>
-                        <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'infographic')}><BarChart3 size={14} className="mr-1.5"/>Create Infographic</Button>
-                        <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'audio')}><Waves size={14} className="mr-1.5"/>Create Audio</Button>
-                     </div>
-                   )}
+      case 'text':
+        return (
+          <div onMouseUp={handleTextSelection} className="p-4 bg-gray-50 border-t">
+            <p className="text-gray-700 whitespace-pre-wrap">{material.content}</p>
+            {user.role === 'student' && material.content && (
+              <div className="mt-4 pt-3 border-t flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500">AI Tools:</span>
+                <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'summary')}><FileText size={14} className="mr-1.5"/>Summarize</Button>
+                <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'infographic')}><BarChart3 size={14} className="mr-1.5"/>Create Infographic</Button>
+                <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'audio')}><Waves size={14} className="mr-1.5"/>Create Audio</Button>
               </div>
-            );
-        case 'video':
-            const embedUrl = getYouTubeEmbedUrl(material.url || '');
-            return (
-                <div className="p-4 bg-gray-50 border-t">
-                    {embedUrl ? (
-                        <div className="aspect-w-16 aspect-h-9"><iframe src={embedUrl} title={material.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full rounded-lg shadow-md" style={{ aspectRatio: '16/9' }}></iframe></div>
-                    ) : (
-                        <p className="text-red-600">Invalid or unsupported video URL.</p>
-                    )}
-                </div>
-            );
-        case 'interactive':
-            if (material.interactiveContent?.type === 'fill-in-the-blank') {
-                return <FillInTheBlank content={material.interactiveContent} isTeacher={user.role === 'teacher'} />;
-            }
-            return null;
-        default: return null;
+            )}
+          </div>
+        );
+      case 'video':
+        const embedUrl = getYouTubeEmbedUrl(material.url || '');
+        return (
+          <div className="p-4 bg-gray-50 border-t">
+            {embedUrl ? (
+              <div className="aspect-w-16 aspect-h-9"><iframe src={embedUrl} title={material.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full rounded-lg shadow-md" style={{ aspectRatio: '16/9' }}></iframe></div>
+            ) : (
+              <p className="text-red-600">Invalid or unsupported video URL.</p>
+            )}
+          </div>
+        );
+      case 'drive':
+        return (
+          <div className="p-4 bg-gray-50 border-t">
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold">Drive Link:</span>
+              <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{material.url}</a>
+            </div>
+          </div>
+        );
+      case 'interactive':
+        if (material.interactiveContent?.type === 'fill-in-the-blank') {
+          return <FillInTheBlank content={material.interactiveContent} isTeacher={user.role === 'teacher'} />;
+        }
+        return null;
+      default:
+        return null;
     }
   };
 
@@ -274,24 +283,43 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                 style={{ left: explainTool.x, top: explainTool.y }}
                 onMouseDown={(e) => e.stopPropagation()}
             >
-                <button
-                    onClick={() => setIsExplainModalOpen(true)}
-                    className="flex items-center space-x-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition"
-                >
-                    <Wand2 size={16} />
-                    <span className="text-sm font-semibold">Explain with AI</span>
-                </button>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsExplainModalOpen(true)}
+          onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') setIsExplainModalOpen(true); }}
+          className="flex items-center space-x-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition"
+        >
+          <Wand2 size={16} />
+          <span className="text-sm font-semibold">Explain with AI</span>
+        </div>
             </div>
         )}
         <div className="space-y-4">
             {course.chapters.map(chapter => (
             <Card key={chapter.id} className="p-0 overflow-hidden">
-                <button aria-expanded={openChapters.has(chapter.id)} onClick={() => toggleChapter(chapter.id)} className="w-full flex justify-between items-center p-4 text-left cursor-pointer hover:bg-gray-50">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={openChapters.has(chapter.id)}
+                  onClick={() => toggleChapter(chapter.id)}
+                  onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') toggleChapter(chapter.id); }}
+                  className="w-full flex justify-between items-center p-4 text-left cursor-pointer hover:bg-gray-50"
+                >
                 <div className="flex items-center space-x-3"><BookOpen className="text-primary-500"/><h3 className="text-lg font-semibold text-gray-800">{chapter.title}</h3></div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                     {user.role === 'teacher' && (
                     <div className="flex items-center space-x-1 p-1 bg-gray-100 rounded-lg">
-                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleAddFileClick(chapter.id); }}><FolderOpen size={16} className="mr-1" /> File</Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleOpenAddModal(chapter.id, 'drive');
+                          }}
+                        >
+                          <FolderOpen size={16} className="mr-1" /> File
+                        </Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'text'); }}><Type size={16} className="mr-1" /> Note</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'video'); }}><Video size={16} className="mr-1" /> Video</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'interactive'); }}>Quiz</Button>
@@ -299,7 +327,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                     )}
                     {openChapters.has(chapter.id) ? <ChevronUp /> : <ChevronDown />}
                 </div>
-                </button>
+                </div>
                 
                 {openChapters.has(chapter.id) && (
                 <>
@@ -309,15 +337,24 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                             {chapter.materials.map(material => (
                             <li key={material.id} className="group">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 pl-6 gap-2 hover:bg-gray-50/50">
-                                <div className="flex items-center space-x-3"><MaterialIcon type={material.type} /><span>{material.title}</span></div>
+                                <div className="flex items-center space-x-3">
+                                  <MaterialIcon type={material.type} />
+                                  <span>{material.title}</span>
+                                  {material.type === 'drive' && material.url && (
+                                    <span className="ml-2 text-xs text-gray-500 truncate max-w-xs">{material.url}</span>
+                                  )}
+                                </div>
                                 <div className="flex items-center space-x-2 self-end sm:self-center">
-                                {material.type === 'file' && <Button variant="secondary" size="sm"><Download size={16} className="mr-1" /> View</Button>}
-                                {user.role === 'teacher' && (
+                                  {material.type === 'file' && <Button variant="secondary" size="sm"><Download size={16} className="mr-1" /> View</Button>}
+                                  {material.type === 'drive' && material.url && (
+                                    <Button variant="secondary" size="sm" as="a" href={material.url} target="_blank" rel="noopener noreferrer"><Download size={16} className="mr-1" /> View</Button>
+                                  )}
+                                  {user.role === 'teacher' && (
                                     <>
-                                    {material.type !== 'file' && <Button variant="secondary" size="sm" onClick={() => handleOpenEditModal(material, chapter.id)}><Edit size={16}/></Button>}
-                                    <Button variant="danger" size="sm" onClick={() => onDeleteMaterial(course.id, chapter.id, material.id)}><Trash2 size={16}/></Button>
+                                      {material.type !== 'file' && <Button variant="secondary" size="sm" onClick={() => handleOpenEditModal(material, chapter.id)}><Edit size={16}/></Button>}
+                                      <Button variant="danger" size="sm" onClick={() => onDeleteMaterial(course.id, chapter.id, material.id)}><Trash2 size={16}/></Button>
                                     </>
-                                )}
+                                  )}
                                 </div>
                             </div>
                             {renderMaterialContent(material)}
@@ -335,7 +372,6 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
             ))}
         </div>
       </div>
-      <GoogleDrivePickerModal isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} onFileSelect={handleFileSelect} />
       <AddOrEditMaterialModal isOpen={isMaterialModalOpen} onClose={() => setIsMaterialModalOpen(false)} onSave={handleSaveMaterial} materialToEdit={editingMaterial} initialType={modalType} />
       <ExplainTextModal isOpen={isExplainModalOpen} onClose={() => setIsExplainModalOpen(false)} selectedText={explainTool.text} />
       {modalityViewer.isOpen && (

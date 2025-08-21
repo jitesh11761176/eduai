@@ -94,7 +94,7 @@ const CourseDetail: React.FC<CourseDetailProps> = (props) => {
         <h2 className="text-2xl font-semibold text-gray-700 flex items-center mb-4"><Rss size={24} className="mr-3 text-primary-600"/>Announcements</h2>
         {/* Announcement logic can be moved into a component if it gets more complex */}
         <div className="space-y-4 max-h-72 overflow-y-auto pr-2">
-            {course.announcements.length > 0 ? course.announcements.map(ann => (
+            {Array.isArray(course.announcements) && course.announcements.length > 0 ? course.announcements.map(ann => (
                 <div key={ann.id} className="p-4 border-l-4 border-primary-500 bg-gray-50 rounded-r-lg">
                     <p className="font-bold text-gray-800">{ann.title}</p>
                     <p className="text-sm text-gray-500">By {ann.author} on {new Date(ann.createdAt).toLocaleDateString()}</p>

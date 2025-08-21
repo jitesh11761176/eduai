@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { UserRole, Course, Student, CourseMaterial, Test, TestSubmission, Teacher, Notification, View, Announcement, DiscussionThread, DiscussionPost, Project, Parent, Principal, AuthenticatedUser } from './types';
 import { mockUser, mockParent, mockPrincipal } from './data/mockData';
+import { signInWithGoogle, FirebaseUser, saveUserToFirestore, getUserFromFirestore, createCourseInFirestore, getCoursesForTeacher, getCoursesForStudent, enrollStudentInCourse, getAllStudentsFromFirestore, auth } from './services/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import TeacherDashboard from './components/dashboard/TeacherDashboard';
 import StudentDashboard from './components/dashboard/StudentDashboard';
@@ -19,6 +21,7 @@ import ProjectWorkspacePage from './components/course/ProjectWorkspacePage';
 import * as api from './services/apiService';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import TeacherAnalyticsPage from './components/analytics/TeacherAnalyticsPage';
+// import { mockUser, mockParent, mockPrincipal } from './data/mockData';
 import ParentDashboard from './components/dashboard/ParentDashboard';
 import Toast from './components/common/Toast';
 import { Lightbulb, UserCheck, Users, Shield, Settings, UserCog, Briefcase, ClipboardEdit, GitMerge, Mic, TrendingUp, Sparkles } from 'lucide-react';
@@ -224,12 +227,16 @@ const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({ onSelectRole,
 
 const App: React.FC = () => {
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    // Store Google user info temporarily after login
+    const [pendingGoogleUser, setPendingGoogleUser] = useState<FirebaseUser | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [submissions, setSubmissions] = useState<TestSubmission[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    // Used to trigger student course refresh after new course is created
+    const [coursesUpdated, setCoursesUpdated] = useState(0);
 
     const [view, setView] = useState<View>('dashboard');
     const [viewContext, setViewContext] = useState<any>({});
@@ -238,19 +245,49 @@ const App: React.FC = () => {
     const [aiNudge, setAiNudge] = useState<{ message: string; cta: { text: string; action: () => void } } | null>(null);
     const [loginStep, setLoginStep] = useState<'initial' | 'roleSelection'>('initial');
 
+    // Persistent login: listen for Firebase Auth state changes
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                // Try to get user from Firestore
+                let firestoreUser = await getUserFromFirestore(firebaseUser.uid);
+                if (firestoreUser) {
+                    setUser(firestoreUser);
+                    // Fetch courses for user
+                    if (firestoreUser.role === 'teacher') {
+                        const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
+                        setCourses(teacherCourses);
+                    } else if (firestoreUser.role === 'student') {
+                        const studentCourses = await getCoursesForStudent(firestoreUser.id);
+                        setCourses(studentCourses);
+                    }
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // When a new course is created, trigger student course refresh
+    useEffect(() => {
+        if (user && user.role === 'student') {
+            (async () => {
+                const studentCourses = await getCoursesForStudent(user.id);
+                setCourses(studentCourses);
+            })();
+        }
+    }, [coursesUpdated, user]);
+
     useEffect(() => {
         if(user) {
             const loadData = async () => {
                 setIsLoading(true);
                 try {
-                    const [data, notifs] = await Promise.all([
-                        api.getInitialData(),
+                    // Fetch students from Firestore
+                    const [studentsFromFS, notifs] = await Promise.all([
+                        getAllStudentsFromFirestore(),
                         api.getNotificationsForUser(user.id)
                     ]);
-                    setCourses(data.courses);
-                    setStudents(data.students);
-                    setTeachers(data.teachers);
-                    setSubmissions(data.submissions);
+                    setStudents(studentsFromFS);
                     setNotifications(notifs);
                 } catch (error) {
                     console.error("Failed to load initial data", error);
@@ -301,20 +338,25 @@ const App: React.FC = () => {
     }, [user, submissions, courses, navigate]);
 
 
+
     const handleLogin = useCallback((role: UserRole) => {
-        if (role === 'parent') {
-            setUser(mockParent);
-        } else if (role === 'principal') {
-            setUser(mockPrincipal);
-        } else {
-            setUser(mockUser(role));
-        }
+        // Always use mock data for user, but use Google photo/name if available
+        setUser(() => {
+            if (role === 'parent') {
+                return mockParent;
+            } else if (role === 'principal') {
+                return mockPrincipal;
+            } else {
+                const base = mockUser(role);
+                return base;
+            }
+        });
         setView('dashboard');
         setLoginStep('initial'); // Reset for next login
     }, []);
 
     const handleLogout = useCallback(() => {
-        setUser(null);
+    setUser(null);
         setView('dashboard');
         setViewContext({});
         setViewingSubmissionId(null);
@@ -322,7 +364,56 @@ const App: React.FC = () => {
         setLoginStep('initial'); // Reset login flow
     }, []);
     
-    const handleGoogleSignIn = () => setLoginStep('roleSelection');
+    // Google sign-in handler using Firebase and Firestore
+    const handleGoogleSignIn = async () => {
+        try {
+            const firebaseUser: FirebaseUser = await signInWithGoogle();
+            if (!firebaseUser) return;
+            // Try to get user from Firestore
+            let firestoreUser = await getUserFromFirestore(firebaseUser.uid);
+            if (!firestoreUser) {
+                // New user: show role selection page
+                setPendingGoogleUser(firebaseUser);
+                setLoginStep('roleSelection');
+                return;
+            }
+            setUser(firestoreUser);
+            // Fetch courses for user
+            if (firestoreUser.role === 'teacher') {
+                const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
+                setCourses(teacherCourses);
+            } else if (firestoreUser.role === 'student') {
+                const studentCourses = await getCoursesForStudent(firestoreUser.id);
+                setCourses(studentCourses);
+            }
+            setLoginStep('initial');
+        } catch (error) {
+            alert('Google sign-in failed. Please try again.');
+        }
+    };
+
+    // Handle role selection for new Google users
+    const handleRoleSelection = async (role: UserRole) => {
+        if (!pendingGoogleUser) return;
+        const firestoreUser = {
+            id: pendingGoogleUser.uid,
+            name: pendingGoogleUser.displayName || pendingGoogleUser.email || 'Google User',
+            email: pendingGoogleUser.email || '',
+            role: role,
+            avatarUrl: pendingGoogleUser.photoURL || ''
+        };
+        await saveUserToFirestore(firestoreUser);
+        setUser(firestoreUser);
+        if (role === 'teacher') {
+            const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
+            setCourses(teacherCourses);
+        } else if (role === 'student') {
+            const studentCourses = await getCoursesForStudent(firestoreUser.id);
+            setCourses(studentCourses);
+        }
+        setPendingGoogleUser(null);
+        setLoginStep('initial');
+    };
     const handleBackToLogin = () => setLoginStep('initial');
 
     const authContextValue = useMemo(() => ({ user, logout: handleLogout }), [user, handleLogout]);
@@ -333,10 +424,20 @@ const App: React.FC = () => {
             : null
     , [view, viewContext, courses]);
 
+    // Add course using Firestore and auto-enroll teacher
     const addCourse = async (courseData: Omit<Course, 'id' | 'teacher' | 'chapters' | 'announcements' | 'discussionThreads' | 'projects' | 'studyGroups'>) => {
         if (!user) return;
-        const newCourse = await api.createCourse(courseData, user.name);
-        setCourses(prev => [...prev, newCourse]);
+        // Add teacherId to course
+        const courseToSave = { ...courseData, teacherId: user.id, teacher: user.name };
+        const courseId = await createCourseInFirestore(courseToSave);
+        // Auto-enroll all students in the new course
+        const allStudents = await getAllStudentsFromFirestore();
+        await Promise.all(allStudents.map(s => enrollStudentInCourse(s.id, courseId)));
+        // Fetch updated courses for teacher
+        const teacherCourses = await getCoursesForTeacher(user.id);
+        setCourses(teacherCourses);
+        // Notify students to refresh their course list
+        setCoursesUpdated(c => c + 1);
     };
 
     const addCourseMaterial = async (courseId: string, chapterId: string, material: Omit<CourseMaterial, 'id'>) => {
@@ -492,7 +593,8 @@ const App: React.FC = () => {
             return <LoginScreen onGoogleSignIn={handleGoogleSignIn} />;
         }
         if (loginStep === 'roleSelection') {
-            return <RoleSelectionScreen onSelectRole={handleLogin} onBack={handleBackToLogin} />;
+            // For new Google users, allow all roles
+            return <RoleSelectionScreen onSelectRole={handleRoleSelection} onBack={handleBackToLogin} />;
         }
         return <LoginScreen onGoogleSignIn={handleGoogleSignIn} />; // Fallback
     }
