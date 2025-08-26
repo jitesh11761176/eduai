@@ -161,18 +161,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
           </div>
         );
       case 'drive':
-        return (
-          <div className="p-4 bg-gray-50 border-t">
-            <a
-              href={material.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-3 py-1.5 text-sm font-semibold rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
-            >
-              <Download size={16} className="mr-1" /> Open Resource
-            </a>
-          </div>
-        );
+  return null; // List already shows a View button; no extra panel needed
       case 'interactive':
         if (material.interactiveContent?.type === 'fill-in-the-blank') {
           return <FillInTheBlank content={material.interactiveContent} isTeacher={user.role === 'teacher'} />;
