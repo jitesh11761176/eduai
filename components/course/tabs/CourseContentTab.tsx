@@ -211,10 +211,14 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
       case 'drive':
         return (
           <div className="p-4 bg-gray-50 border-t">
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold">Drive Link:</span>
-              <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{material.url}</a>
-            </div>
+            <a
+              href={material.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-semibold rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+            >
+              <Download size={16} className="mr-1" /> Open Resource
+            </a>
           </div>
         );
       case 'interactive':
@@ -309,21 +313,12 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                 <div className="flex items-center space-x-3"><BookOpen className="text-primary-500"/><h3 className="text-lg font-semibold text-gray-800">{chapter.title}</h3></div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                     {user.role === 'teacher' && (
-                    <div className="flex items-center space-x-1 p-1 bg-gray-100 rounded-lg">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleOpenAddModal(chapter.id, 'drive');
-                          }}
-                        >
-                          <FolderOpen size={16} className="mr-1" /> File
-                        </Button>
+                      <div className="flex items-center space-x-1 p-1 bg-gray-100 rounded-lg">
+                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'drive'); }}><FolderOpen size={16} className="mr-1" /> File</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'text'); }}><Type size={16} className="mr-1" /> Note</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'video'); }}><Video size={16} className="mr-1" /> Video</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'interactive'); }}>Quiz</Button>
-                    </div>
+                      </div>
                     )}
                     {openChapters.has(chapter.id) ? <ChevronUp /> : <ChevronDown />}
                 </div>
@@ -340,14 +335,19 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                                 <div className="flex items-center space-x-3">
                                   <MaterialIcon type={material.type} />
                                   <span>{material.title}</span>
-                                  {material.type === 'drive' && material.url && (
-                                    <span className="ml-2 text-xs text-gray-500 truncate max-w-xs">{material.url}</span>
-                                  )}
+                                  {/* Drive URL hidden */}
                                 </div>
                                 <div className="flex items-center space-x-2 self-end sm:self-center">
                                   {material.type === 'file' && <Button variant="secondary" size="sm"><Download size={16} className="mr-1" /> View</Button>}
                                   {material.type === 'drive' && material.url && (
-                                    <Button variant="secondary" size="sm" as="a" href={material.url} target="_blank" rel="noopener noreferrer"><Download size={16} className="mr-1" /> View</Button>
+                                    <a
+                                      href={material.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center px-3 py-1.5 text-sm font-semibold rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                                    >
+                                      <Download size={16} className="mr-1" /> View
+                                    </a>
                                   )}
                                   {user.role === 'teacher' && (
                                     <>

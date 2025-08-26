@@ -136,26 +136,25 @@ const AddOrEditMaterialModal: React.FC<AddOrEditMaterialModalProps> = ({ isOpen,
     (type === 'text' ? content.trim() !== '' :
     type === 'video' ? url.trim() !== '' :
     type === 'interactive' ? interactiveContent?.sentences.some(s => (typeof s === 'string' && s.trim() !== '') || (typeof s === 'object' && s.blank.trim() !== '')) :
-    type === 'file' ? !!file :
+    type === 'file' ? driveLink.trim() !== '' :
     type === 'drive' ? driveLink.trim() !== '' : false)
   );
-  {/* Only show Google Drive link input for type==='file' */}
-        {type === 'file' && (
-          <div>
-            <label htmlFor="material-drive-link" className="block text-sm font-medium text-gray-700">Google Drive Link</label>
-            <input
-              type="url"
-              id="material-drive-link"
-              value={driveLink}
-              onChange={e => setDriveLink(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              placeholder="https://drive.google.com/file/d/..."
-              required
-            />
-            <p className="mt-2 text-xs text-gray-500">Paste a Google Drive file or folder link here. The 'View' button will open it in a new tab.</p>
-          </div>
-        )
-      }
+
+  const renderDriveFields = () => (
+    <div>
+      <label htmlFor="material-drive-link" className="block text-sm font-medium text-gray-700">Google Drive Link</label>
+      <input
+        type="url"
+        id="material-drive-link"
+        value={driveLink}
+        onChange={e => setDriveLink(e.target.value)}
+        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+        placeholder="https://drive.google.com/file/d/..."
+        required
+      />
+      <p className="mt-2 text-xs text-gray-500">Paste a Google Drive file or folder link here. Students will get a View button that opens this in a new tab.</p>
+    </div>
+  );
   const modalTitle = `${isEditing ? 'Edit' : 'Add'} ${type === 'text' ? 'Text Note' : type === 'video' ? 'Video' : 'Interactive Exercise'}`;
 
   return (
@@ -210,7 +209,7 @@ const AddOrEditMaterialModal: React.FC<AddOrEditMaterialModalProps> = ({ isOpen,
           </>
         )}
         
-        {type === 'video' && (
+  {type === 'video' && (
           <div>
             <label htmlFor="material-url" className="block text-sm font-medium text-gray-700">Video URL</label>
             <input
@@ -224,7 +223,9 @@ const AddOrEditMaterialModal: React.FC<AddOrEditMaterialModalProps> = ({ isOpen,
             />
              <p className="mt-2 text-xs text-gray-500">Currently, only YouTube URLs are supported for embedding.</p>
           </div>
-        )}
+  )}
+
+  {(type === 'file' || type === 'drive') && renderDriveFields()}
 
     {type === 'interactive' && interactiveContent?.type === 'fill-in-the-blank' && (
       <>
