@@ -434,42 +434,91 @@ export const detectPlagiarism = async (text: string): Promise<{ similarityScore:
 };
 
 export const generateContentFromUrl = async (url: string): Promise<{ summary: string; }> => {
-    // NOTE: This is a simulation. In a real application, you'd need a backend service to fetch the URL content
-    // and pass it to the AI, as client-side fetching is blocked by CORS for most websites.
-    
-    const prompt = `
-        You are an expert at summarizing web content for educational purposes. 
-        I am providing you with a URL. Please provide a concise summary of the key points from the content at this URL, suitable for class notes.
-        Assume you have already fetched the content from this URL: ${url}
-        
-        **Simulated Content (as you cannot access external URLs):**
-        "The mitochondria is the powerhouse of the cell. It generates most of the cell's supply of adenosine triphosphate (ATP), used as a source of chemical energy. It was first described by Richard Altmann in 1890. The structure consists of an outer membrane, an inner membrane, and the mitochondrial matrix."
+    // Attempt to fetch the raw page content (will work only if CORS allows). Otherwise we fall back gracefully.
+    const cleanUrl = url.trim();
+    if (!/^https?:\/\//i.test(cleanUrl)) {
+        throw new Error("URL must start with http:// or https://");
+    }
 
-        Based on this simulated content, provide your summary.
-    `;
+    const fallbackSummary = `Could not fetch the page content (likely CORS blocked). Provide a manual summary of: ${cleanUrl}`;
+
+    if (!API_KEY) {
+        return { summary: fallbackSummary + " (Add VITE_GEMINI_API_KEY for AI summarization.)" };
+    }
+
+    // Fetch & extract text
+    let extractedText = '';
+    try {
+        let res = await fetch(cleanUrl, { method: 'GET' });
+        if (!res.ok) throw new Error('Status ' + res.status);
+        let html = await res.text();
+        // If result looks like an access denied or extremely short, retry via local proxy
+        if (html.length < 500 || /denied|forbidden|captcha/i.test(html)) {
+            try {
+                const proxyRes = await fetch(`http://localhost:5174/proxy?url=${encodeURIComponent(cleanUrl)}`);
+                if (proxyRes.ok) {
+                    html = await proxyRes.text();
+                }
+            } catch (proxyErr) {
+                console.warn('Proxy fetch failed', proxyErr);
+            }
+        }
+        // Remove scripts/styles and tags
+        extractedText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ') // strip tags
+            .replace(/&[a-z#0-9]+;/gi, ' ')
+            .replace(/\s+/g, ' ') // collapse whitespace
+            .trim();
+    } catch (err) {
+        console.warn('Fetch failed or CORS blocked; using fallback simulation.', err);
+    }
+
+    if (!extractedText) {
+        return { summary: fallbackSummary };
+    }
+
+    // Limit size to avoid token overuse
+    const MAX_CHARS = 6000; // ~ a few thousand tokens max
+    if (extractedText.length > MAX_CHARS) {
+        extractedText = extractedText.slice(0, MAX_CHARS) + ' ...';
+    }
+
+    const prompt = `Summarize the following webpage content into a concise (80-120 words) study note with bullet-like clarity (no actual bullets needed), focusing only on the central ideas.\n\nURL: ${cleanUrl}\n\nCONTENT:\n"""${extractedText}"""`;
+
+    const parseJsonSafe = (raw: string): { summary: string } => {
+        let text = raw.trim();
+        if (text.startsWith('```')) {
+            text = text.replace(/^```\w*\n/, '').replace(/```$/,'').trim();
+        }
+        try { return JSON.parse(text); } catch {}
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) { try { return JSON.parse(match[0]); } catch {} }
+        return { summary: text };
+    };
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
-                systemInstruction: "Your response MUST be a valid JSON object with one key: 'summary'.",
+                systemInstruction: "Return ONLY valid JSON: { \"summary\": string }.",
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
-                    properties: {
-                        summary: { type: Type.STRING }
-                    },
+                    properties: { summary: { type: Type.STRING } },
                     required: ["summary"]
                 }
             }
         });
-        
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText);
+        const parsed = parseJsonSafe(response.text);
+        if (!parsed.summary) return { summary: fallbackSummary };
+        return parsed;
     } catch (error) {
-        console.error("Error generating content from URL:", error);
-        throw new Error("Failed to generate content with AI. Note: This is a simulation.");
+        console.error('AI summarization failed:', error);
+        return { summary: fallbackSummary + ' (AI error)' };
     }
 };
 

@@ -2,11 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Course, User, CourseMaterial, Chapter, TestSubmission, InteractiveContent } from '../../../types';
 import Card from '../../common/Card';
 import Button from '../../common/Button';
-import { BookOpen, FolderOpen, Type, Video, ChevronDown, ChevronUp, Download, Edit, Trash2, Users, Wand2, FileText, BarChart3, Waves } from 'lucide-react';
+import { BookOpen, FolderOpen, Video, ChevronDown, ChevronUp, Download, Edit, Trash2, Users } from 'lucide-react';
 import AddOrEditMaterialModal from '../AddOrEditMaterialModal';
 import { MaterialIcon } from '../CourseDetail';
-import ExplainTextModal from '../../student/ExplainTextModal';
-import ContentModalityViewer from '../../student/ContentModalityViewer';
+// Text note / AI explain features removed
 
 interface CourseContentTabProps {
   course: Course;
@@ -83,55 +82,22 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<CourseMaterial | null>(null);
-  const [modalType, setModalType] = useState<'text' | 'video' | 'interactive'>('text');
+  const [modalType, setModalType] = useState<'video' | 'interactive'>('video');
   
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [openChapters, setOpenChapters] = useState<Set<string>>(() => new Set(course.chapters.map(c => c.id)));
   
-  // State for "Explain It Differently" tool
-  const [explainTool, setExplainTool] = useState<{ visible: boolean; x: number; y: number; text: string }>({ visible: false, x: 0, y: 0, text: '' });
-  const [isExplainModalOpen, setIsExplainModalOpen] = useState(false);
-  
-  // State for Content Modality Viewer
-  const [modalityViewer, setModalityViewer] = useState<{ isOpen: boolean; content: string; mode: 'summary' | 'infographic' | 'audio' | null }>({ isOpen: false, content: '', mode: null });
-
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  const handleTextSelection = () => {
-    if (user.role !== 'student') return;
-    const selection = window.getSelection();
-    const selectedText = selection?.toString().trim() || '';
-    if (selectedText.length > 10) { // Only show for meaningful selections
-      const range = selection!.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      setExplainTool({
-        visible: true,
-        x: rect.left + window.scrollX + rect.width / 2,
-        y: rect.top + window.scrollY - 40, // Position above the selection
-        text: selectedText,
-      });
-    } else {
-      setExplainTool({ ...explainTool, visible: false });
-    }
-  };
-  
-  const openModalityViewer = (content: string, mode: 'summary' | 'infographic' | 'audio') => {
-    setModalityViewer({ isOpen: true, content, mode });
-  };
+  // Removed text selection & modality viewer state
 
 
-  useEffect(() => {
-    const handleClickOutside = () => setExplainTool(prev => ({ ...prev, visible: false }));
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Removed explain tool effect
 
   const handleAddFileClick = (chapterId: string) => {
     setActiveChapterId(chapterId);
     setIsPickerOpen(true);
   };
 
-  const handleOpenAddModal = (chapterId: string, type: 'text' | 'video' | 'interactive' | 'drive') => {
+  const handleOpenAddModal = (chapterId: string, type: 'video' | 'interactive' | 'drive') => {
     setActiveChapterId(chapterId);
     setEditingMaterial(null);
     setModalType(type);
@@ -182,21 +148,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
   };
 
   const renderMaterialContent = (material: CourseMaterial) => {
-    switch (material.type) {
-      case 'text':
-        return (
-          <div onMouseUp={handleTextSelection} className="p-4 bg-gray-50 border-t">
-            <p className="text-gray-700 whitespace-pre-wrap">{material.content}</p>
-            {user.role === 'student' && material.content && (
-              <div className="mt-4 pt-3 border-t flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-500">AI Tools:</span>
-                <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'summary')}><FileText size={14} className="mr-1.5"/>Summarize</Button>
-                <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'infographic')}><BarChart3 size={14} className="mr-1.5"/>Create Infographic</Button>
-                <Button size="sm" variant="secondary" onClick={() => openModalityViewer(material.content!, 'audio')}><Waves size={14} className="mr-1.5"/>Create Audio</Button>
-              </div>
-            )}
-          </div>
-        );
+  switch (material.type) {
       case 'video':
         const embedUrl = getYouTubeEmbedUrl(material.url || '');
         return (
@@ -280,25 +232,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
 
   return (
     <>
-      <div ref={contentRef}>
-        {explainTool.visible && (
-            <div
-                className="absolute z-10 -translate-x-1/2"
-                style={{ left: explainTool.x, top: explainTool.y }}
-                onMouseDown={(e) => e.stopPropagation()}
-            >
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setIsExplainModalOpen(true)}
-          onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') setIsExplainModalOpen(true); }}
-          className="flex items-center space-x-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition"
-        >
-          <Wand2 size={16} />
-          <span className="text-sm font-semibold">Explain with AI</span>
-        </div>
-            </div>
-        )}
+  <div>
         <div className="space-y-4">
             {course.chapters.map(chapter => (
             <Card key={chapter.id} className="p-0 overflow-hidden">
@@ -315,7 +249,6 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                     {user.role === 'teacher' && (
                       <div className="flex items-center space-x-1 p-1 bg-gray-100 rounded-lg">
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'drive'); }}><FolderOpen size={16} className="mr-1" /> File</Button>
-                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'text'); }}><Type size={16} className="mr-1" /> Note</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'video'); }}><Video size={16} className="mr-1" /> Video</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'interactive'); }}>Quiz</Button>
                       </div>
@@ -372,16 +305,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
             ))}
         </div>
       </div>
-      <AddOrEditMaterialModal isOpen={isMaterialModalOpen} onClose={() => setIsMaterialModalOpen(false)} onSave={handleSaveMaterial} materialToEdit={editingMaterial} initialType={modalType} />
-      <ExplainTextModal isOpen={isExplainModalOpen} onClose={() => setIsExplainModalOpen(false)} selectedText={explainTool.text} />
-      {modalityViewer.isOpen && (
-        <ContentModalityViewer
-            isOpen={modalityViewer.isOpen}
-            onClose={() => setModalityViewer({ isOpen: false, content: '', mode: null })}
-            content={modalityViewer.content}
-            mode={modalityViewer.mode!}
-        />
-      )}
+  <AddOrEditMaterialModal isOpen={isMaterialModalOpen} onClose={() => setIsMaterialModalOpen(false)} onSave={handleSaveMaterial} materialToEdit={editingMaterial} initialType={modalType as any} />
     </>
   );
 };
