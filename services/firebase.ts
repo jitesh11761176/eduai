@@ -64,6 +64,12 @@ export const createCourseInFirestore = async (course: any) => {
   return docRef.id;
 };
 
+// Fetch all courses (used to auto-enroll newly created students in existing courses)
+export const getAllCoursesFromFirestore = async () => {
+  const snapshot = await getDocs(collection(db, "courses"));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
 export const getCoursesForTeacher = async (teacherId: string) => {
   const q = query(collection(db, "courses"), where("teacherId", "==", teacherId));
   const snapshot = await getDocs(q);

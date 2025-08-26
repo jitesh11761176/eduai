@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { UserRole, Course, Student, CourseMaterial, Test, TestSubmission, Teacher, Notification, View, Announcement, DiscussionThread, DiscussionPost, Project, Parent, Principal, AuthenticatedUser } from './types';
 import { mockUser, mockParent, mockPrincipal } from './data/mockData';
-import { signInWithGoogle, FirebaseUser, saveUserToFirestore, getUserFromFirestore, createCourseInFirestore, getCoursesForTeacher, getCoursesForStudent, enrollStudentInCourse, getAllStudentsFromFirestore, auth } from './services/firebase';
+import { signInWithGoogle, FirebaseUser, saveUserToFirestore, getUserFromFirestore, createCourseInFirestore, getCoursesForTeacher, getCoursesForStudent, enrollStudentInCourse, getAllStudentsFromFirestore, getAllCoursesFromFirestore, auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import TeacherDashboard from './components/dashboard/TeacherDashboard';
@@ -408,8 +408,11 @@ const App: React.FC = () => {
             const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
             setCourses(teacherCourses);
         } else if (role === 'student') {
-            const studentCourses = await getCoursesForStudent(firestoreUser.id);
-            setCourses(studentCourses);
+            // Auto-enroll new student into all existing courses
+            const allCourses = await getAllCoursesFromFirestore();
+            await Promise.all(allCourses.map(c => enrollStudentInCourse(firestoreUser.id, c.id)));
+            const enrolledCourses = await getCoursesForStudent(firestoreUser.id);
+            setCourses(enrolledCourses);
         }
         setPendingGoogleUser(null);
         setLoginStep('initial');
@@ -531,6 +534,13 @@ const App: React.FC = () => {
         const newUser = await api.addUser(userData);
         if (userData.role === 'student') {
             setStudents(prev => [...prev, newUser as Student]);
+            // Also enroll this newly created student (admin flow) into all Firestore courses
+            try {
+                const allCourses = await getAllCoursesFromFirestore();
+                await Promise.all(allCourses.map(c => enrollStudentInCourse(newUser.id, c.id)));
+            } catch (e) {
+                console.warn('Auto-enroll admin-created student failed (may be using mock data only):', e);
+            }
         } else {
             setTeachers(prev => [...prev, newUser as Teacher]);
         }
