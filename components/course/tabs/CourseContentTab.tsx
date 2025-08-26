@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Course, User, CourseMaterial, Chapter, TestSubmission, InteractiveContent } from '../../../types';
+import { Course, User, CourseMaterial, Chapter, TestSubmission } from '../../../types';
 import Card from '../../common/Card';
 import Button from '../../common/Button';
 import { BookOpen, FolderOpen, Video, ChevronDown, ChevronUp, Download, Edit, Trash2, Users } from 'lucide-react';
@@ -28,61 +28,14 @@ const getYouTubeEmbedUrl = (url: string): string | null => {
     return null; 
 };
 
-const FillInTheBlank: React.FC<{ content: InteractiveContent, isTeacher: boolean }> = ({ content, isTeacher }) => {
-    const [answers, setAnswers] = useState<Record<number, string>>({});
-    const [results, setResults] = useState<Record<number, boolean>>({});
-
-    const handleAnswerChange = (index: number, value: string) => {
-        setAnswers(prev => ({ ...prev, [index]: value }));
-    };
-
-    const checkAnswers = () => {
-        const newResults: Record<number, boolean> = {};
-        content.sentences.forEach((part, index) => {
-            if (typeof part === 'object') {
-                const correctAnswer = content.answers[part.blank];
-                newResults[index] = answers[index]?.trim().toLowerCase() === correctAnswer?.trim().toLowerCase();
-            }
-        });
-        setResults(newResults);
-    };
-
-    return (
-        <div className="p-4 bg-gray-50 border-t space-y-4">
-            <div className="flex flex-wrap items-center gap-2 text-lg">
-                {content.sentences.map((part, index) => 
-                    typeof part === 'string' ? (
-                        <span key={index}>{part}</span>
-                    ) : (
-                        <input
-                            key={index}
-                            type="text"
-                            disabled={isTeacher}
-                            value={isTeacher ? part.blank : answers[index] || ''}
-                            onChange={(e) => handleAnswerChange(index, e.target.value)}
-                            className={`inline-block w-32 p-1 border-b-2 rounded-t-sm text-center font-semibold
-                                ${isTeacher ? 'border-gray-400 bg-gray-200' : 'border-primary-400 bg-white focus:outline-none focus:border-primary-600'}
-                                ${results[index] === true ? 'border-green-500' : results[index] === false ? 'border-red-500' : ''}
-                            `}
-                        />
-                    )
-                )}
-            </div>
-            {!isTeacher && (
-                <div>
-                    <Button onClick={checkAnswers}>Check Answers</Button>
-                </div>
-            )}
-        </div>
-    );
-};
+// Quiz (interactive) feature removed
 
 
 const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submissions, onAddMaterial, onUpdateMaterial, onDeleteMaterial, onAttemptTest, onViewFeedback }) => {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<CourseMaterial | null>(null);
-  const [modalType, setModalType] = useState<'video' | 'interactive'>('video');
+  const [modalType, setModalType] = useState<'video' | 'drive'>('video');
   
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [openChapters, setOpenChapters] = useState<Set<string>>(() => new Set(course.chapters.map(c => c.id)));
@@ -97,7 +50,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
     setIsPickerOpen(true);
   };
 
-  const handleOpenAddModal = (chapterId: string, type: 'video' | 'interactive' | 'drive') => {
+  const handleOpenAddModal = (chapterId: string, type: 'video' | 'drive') => {
     setActiveChapterId(chapterId);
     setEditingMaterial(null);
     setModalType(type);
@@ -148,7 +101,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
   };
 
   const renderMaterialContent = (material: CourseMaterial) => {
-  switch (material.type) {
+    switch (material.type) {
       case 'video':
         const embedUrl = getYouTubeEmbedUrl(material.url || '');
         return (
@@ -162,11 +115,6 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
         );
       case 'drive':
   return null; // List already shows a View button; no extra panel needed
-      case 'interactive':
-        if (material.interactiveContent?.type === 'fill-in-the-blank') {
-          return <FillInTheBlank content={material.interactiveContent} isTeacher={user.role === 'teacher'} />;
-        }
-        return null;
       default:
         return null;
     }
@@ -239,7 +187,6 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                       <div className="flex items-center space-x-1 p-1 bg-gray-100 rounded-lg">
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'drive'); }}><FolderOpen size={16} className="mr-1" /> File</Button>
                         <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'video'); }}><Video size={16} className="mr-1" /> Video</Button>
-                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleOpenAddModal(chapter.id, 'interactive'); }}>Quiz</Button>
                       </div>
                     )}
                     {openChapters.has(chapter.id) ? <ChevronUp /> : <ChevronDown />}
@@ -251,7 +198,7 @@ const CourseContentTab: React.FC<CourseContentTabProps> = ({ course, user, submi
                     <div className="border-t">
                         {chapter.materials.length > 0 ? (
                         <ul className="divide-y">
-                            {chapter.materials.map(material => (
+                            {chapter.materials.filter(m => m.type !== 'interactive').map(material => (
                             <li key={material.id} className="group">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 pl-6 gap-2 hover:bg-gray-50/50">
                                 <div className="flex items-center space-x-3">
