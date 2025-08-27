@@ -779,3 +779,114 @@ Return JSON with keys: overall (string, 2 sentences), strengths (string[] 2-4 co
         throw new Error('Failed to generate test performance summary');
     }
 };
+
+// ==== Vision: Analyze uploaded test answer images and extract answers ====
+export const analyzeTestAnswerImages = async (
+    test: { questions: Question[] },
+    files: File[]
+): Promise<Record<string,string>> => {
+    if (!API_KEY) throw new Error('Gemini API key missing');
+    if (!files.length) return {};
+
+    // Build question descriptor
+    const questionDescriptor = test.questions.map((q, i) => {
+        if (q.type === 'mcq') {
+            const opts = (q.options || []).map((o, idx) => `${String.fromCharCode(65+idx)}. ${o}`).join('\n');
+            return `${i+1}. (MCQ) ${q.text}\n${opts}`;
+        }
+        if (q.type === 'true-false') return `${i+1}. (True/False) ${q.text}`;
+        return `${i+1}. (Subjective) ${q.text}`;
+    }).join('\n\n');
+
+    const systemInstruction = `You are an exam paper transcription assistant. You receive photos or scans of a student's completed answer sheets. Extract the student's answers.
+Return ONLY strict JSON with this shape (no extra keys, no commentary): {
+    "answers": [
+        { "index": <number 1-based question index>, "answer": <string> }
+    ]
+}
+Rules:
+- For MCQ: answer should be the LETTER (A-D) only. If multiple marked, choose the clearest. If uncertain, use "".
+- For True/False: answer must be exactly "True" or "False" (capitalization exact). If unclear leave empty string.
+- For Subjective: provide the full transcribed answer, preserving paragraphs (use \n). Clean obvious OCR noise.
+- Do not invent content. Empty string if unreadable.`;
+
+    // Convert files to inlineData parts
+    const imageParts: any[] = [];
+    for (const file of files) {
+        try {
+            let mime = file.type || 'image/jpeg';
+            // If PDF, we currently skip (handled earlier via canvas). Caller should rasterize first for best results.
+            const buf = await file.arrayBuffer();
+            const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+            imageParts.push({ inlineData: { mimeType: mime, data: b64 } });
+        } catch (e) {
+            console.warn('Failed to encode file for vision', e);
+        }
+    }
+    if (!imageParts.length) return {};
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [
+                {
+                    role: 'user',
+                    parts: [
+                        { text: systemInstruction },
+                        { text: 'QUESTIONS:\n' + questionDescriptor },
+                        ...imageParts
+                    ]
+                }
+            ],
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        answers: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    index: { type: Type.NUMBER },
+                                    answer: { type: Type.STRING }
+                                },
+                                required: ['index','answer']
+                            }
+                        }
+                    },
+                    required: ['answers']
+                }
+            }
+        });
+        const raw = response.text.trim();
+        const parsed = JSON.parse(raw);
+        const map: Record<string,string> = {};
+        if (Array.isArray(parsed.answers)) {
+            parsed.answers.forEach((a: any) => {
+                if (!a || typeof a.index !== 'number' || a.index < 1 || a.index > test.questions.length) return;
+                const q = test.questions[a.index - 1];
+                if (!q) return;
+                let val = typeof a.answer === 'string' ? a.answer.trim() : '';
+                if (q.type === 'mcq') {
+                    // Accept letter; map to option
+                        if (/^[A-D]$/i.test(val) && q.options) {
+                            const opt = q.options[val.toUpperCase().charCodeAt(0)-65];
+                            if (opt) val = opt; else val='';
+                        } else if (q.options) {
+                            // Try to match option text
+                            const found = q.options.find(o => o.toLowerCase() === val.toLowerCase());
+                            if (found) val = found; else val='';
+                        }
+                } else if (q.type === 'true-false') {
+                    if (!/^True|False$/i.test(val)) val=''; else val = val.charAt(0).toUpperCase()+val.slice(1).toLowerCase();
+                }
+                map[q.id] = val;
+            });
+        }
+        return map;
+    } catch (err:any) {
+        console.error('Vision answer extraction failed', err);
+        throw new Error('Gemini vision extraction failed: ' + err.message);
+    }
+};

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Course, Chapter, Test, Question } from '../../types';
 import Card from '../common/Card';
 import Button from '../common/Button';
-import { ArrowLeft, Send, Clock, PlayCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Send, Clock, PlayCircle, ChevronRight, Upload, FileText } from 'lucide-react';
+import { analyzeTestAnswerImages } from '../../services/geminiService';
 
 interface TestTakingPageProps {
   course: Course;
@@ -26,6 +27,32 @@ const TestTakingPage: React.FC<TestTakingPageProps> = ({ course, chapter, test, 
   const [hasStarted, setHasStarted] = useState(!test.duration);
   const [timeLeft, setTimeLeft] = useState(test.duration ? test.duration * 60 : 0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [showOcrHelp, setShowOcrHelp] = useState(false);
+  // Bulk (whole test) upload OCR
+  const [bulkOcrProcessing, setBulkOcrProcessing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0); // 0-100
+  const [bulkStatus, setBulkStatus] = useState<string | null>(null);
+
+  const subjectiveQuestions = useMemo(() => test.questions.filter(q => q.type === 'subjective'), [test.questions]);
+
+  const handleBulkUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setBulkOcrProcessing(true);
+    setBulkProgress(0);
+    setBulkStatus('Analyzing images with AI...');
+    try {
+      const fileArr = Array.from(files);
+      const visionAnswered = await analyzeTestAnswerImages({ questions: test.questions }, fileArr);
+      setAnswers(prev => ({ ...prev, ...visionAnswered }));
+      setBulkProgress(100);
+      setBulkStatus('Completed with AI. Review & edit answers below.');
+    } catch (e:any) {
+      setBulkStatus('Failed: ' + e.message);
+      alert('Bulk OCR failed: ' + e.message);
+    } finally {
+      setTimeout(() => { setBulkOcrProcessing(false); }, 600);
+    }
+  };
 
   const isAdaptive = test.isAdaptive;
   const currentQuestion = test.questions[currentQuestionIndex];
@@ -87,8 +114,8 @@ const TestTakingPage: React.FC<TestTakingPageProps> = ({ course, chapter, test, 
   const renderQuestionInput = (question: Question) => {
     // Input rendering logic remains the same
     switch (question.type) {
-        case 'subjective':
-             return <textarea value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} rows={8} className="w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder={`Type your detailed answer here...`}/>;
+  case 'subjective':
+       return <textarea value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} rows={8} className="w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder={`Type your answer or use the bulk upload at top.`}/>;
         case 'mcq':
             return (
                 <div className="space-y-3">
@@ -157,6 +184,36 @@ const TestTakingPage: React.FC<TestTakingPageProps> = ({ course, chapter, test, 
             )}
         </div>
       </Card>
+    {subjectiveQuestions.length > 0 && (
+        <Card className="p-6 border-dashed border-2">
+          <h2 className="text-lg font-semibold text-gray-700 flex items-center mb-3"><Upload size={18} className="mr-2"/>Upload Written Answers (Whole Test)</h2>
+      <p className="text-sm text-gray-600 mb-4">Upload clear photos or scans of ALL pages. AI will read them and fill answers (MCQ, True/False, Subjective). Review & correct before submitting.</p>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <label className="inline-flex items-center bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded cursor-pointer hover:bg-primary-700 disabled:opacity-50">
+              <Upload size={16} className="mr-2"/>Select Files
+              <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => { handleBulkUpload(e.target.files); e.target.value=''; }} disabled={bulkOcrProcessing} />
+            </label>
+            {bulkOcrProcessing && (
+              <div className="flex-1 w-full">
+                <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
+                  <div className="h-full bg-primary-500 transition-all" style={{ width: bulkProgress + '%' }} />
+                </div>
+                <p className="text-xs text-gray-600 mt-1">{bulkStatus || 'Processing...'}</p>
+              </div>
+            )}
+            {!bulkOcrProcessing && bulkStatus && <p className="text-xs text-gray-600">{bulkStatus}</p>}
+          </div>
+          <button type="button" onClick={() => setShowOcrHelp(v=>!v)} className="mt-3 text-xs text-primary-600 underline">{showOcrHelp ? 'Hide capture tips' : 'Capture tips'}</button>
+          {showOcrHelp && (
+            <ul className="mt-2 text-xs text-gray-500 list-disc ml-5 space-y-1">
+        <li>Bright, even lighting (avoid shadows / glare).</li>
+        <li>All text sharp & readable; retake blurry pages.</li>
+        <li>Keep pages flat; no cropping of edges.</li>
+        <li>Maintain order; AI uses provided order.</li>
+            </ul>
+          )}
+        </Card>
+      )}
 
       <Card className="p-6">
         <div className="space-y-8">
