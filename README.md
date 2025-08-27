@@ -10,7 +10,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.2.0-646CFF.svg)](https://vitejs.dev/)
 [![Google AI](https://img.shields.io/badge/Google%20AI-Gemini-4285F4.svg)](https://ai.google.dev/)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/jitesh11761176/eduai)
+
 
 *An AI-powered educational platform that revolutionizes learning with intelligent tutoring, adaptive pathways, and seamless course management.*
 
