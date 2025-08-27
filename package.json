@@ -1,8 +1,19 @@
 {
   "name": "eduai-platform",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "AI-powered educational platform with Google AI Studio integration",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jitesh11761176/eduai.git"
+  },
+  "keywords": ["education", "ai", "react", "typescript", "gemini", "google-ai"],
+  "authors": [
+    "Jitesh Kumar <jitesh11761176@users.noreply.github.com>",
+    "Aryan <aryan6673@users.noreply.github.com>"
+  ],
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "proxy": "node ./server/proxy.ts",
