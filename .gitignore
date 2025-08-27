@@ -17,6 +17,7 @@ dist-ssr
 .vscode/*
 .env
 .env.*
+!.env.example
 coverage/
 Thumbs.db
 # TypeScript
