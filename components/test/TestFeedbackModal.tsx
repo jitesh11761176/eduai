@@ -4,15 +4,15 @@ import Modal from '../common/Modal';
 import { BookOpen, HelpCircle, MessageSquare, Star, CheckCircle, XCircle, ClipboardCheck } from 'lucide-react';
 
 interface TestFeedbackModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  course: Course;
-  test: Test;
-  submission: TestSubmission;
+    isOpen: boolean;
+    onClose: () => void;
+    course: Course;
+    test: Test;
+    submission: TestSubmission & { rank?: number }; // rank optionally injected
 }
 
 const RubricDisplay: React.FC<{ rubric: Rubric, evaluation?: Record<string, number> }> = ({ rubric, evaluation }) => {
-    const totalPoints = evaluation ? Object.values(evaluation).reduce((sum, points) => sum + points, 0) : 0;
+    const totalPoints = evaluation ? (Object.values(evaluation) as number[]).reduce((sum: number, pts: number) => sum + pts, 0) : 0;
     const maxPoints = rubric.criteria.reduce((sum, crit) => sum + Math.max(...crit.levels.map(l => l.points)), 0);
 
     return (
@@ -76,8 +76,10 @@ const TestFeedbackModal: React.FC<TestFeedbackModalProps> = ({ isOpen, onClose, 
         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
             <h3 className="font-bold text-lg text-gray-800 flex items-center"><Star size={20} className="mr-2 text-green-500" />Overall Result & Feedback</h3>
             <div className="mt-2 pl-7">
-                <p className="text-sm text-gray-600 font-semibold">Score</p>
-                <p className="text-3xl font-bold text-green-700">{submission.score}/10</p>
+                                <p className="text-sm text-gray-600 font-semibold flex items-center gap-3">Score {submission.rank !== undefined && (
+                                    <span className="text-xs font-bold inline-flex items-center bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Rank #{submission.rank}</span>
+                                )}</p>
+                                <p className="text-3xl font-bold text-green-700">{submission.score}/10</p>
                 
                 <p className="text-sm text-gray-600 font-semibold mt-4">Feedback from {course.teacher}</p>
                 <p className="text-gray-800 whitespace-pre-wrap leading-relaxed mt-1">{submission.feedback || 'No feedback provided.'}</p>

@@ -74,6 +74,15 @@ export interface TestSubmission {
   rubricEvaluation?: Record<string, number>; // criterionId -> points awarded
 }
 
+export interface MaterialCompletion {
+  id: string; // composite id student_course_chapter_material
+  studentId: string;
+  courseId: string;
+  chapterId: string;
+  materialId: string;
+  completedAt: Date;
+}
+
 export interface Test {
   id: string;
   title: string;

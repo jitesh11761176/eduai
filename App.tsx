@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { UserRole, Course, Student, CourseMaterial, Test, TestSubmission, Teacher, Notification, View, Announcement, DiscussionThread, DiscussionPost, Project, Parent, Principal, AuthenticatedUser } from './types';
 import { mockUser, mockParent, mockPrincipal } from './data/mockData';
-import { signInWithGoogle, FirebaseUser, saveUserToFirestore, getUserFromFirestore, createCourseInFirestore, getCoursesForTeacher, getCoursesForStudent, enrollStudentInCourse, getAllStudentsFromFirestore, getAllCoursesFromFirestore, auth } from './services/firebase';
+import { signInWithGoogle, FirebaseUser, saveUserToFirestore, getUserFromFirestore, createCourseInFirestore, getCoursesForTeacher, getCoursesForStudent, enrollStudentInCourse, getAllStudentsFromFirestore, getAllCoursesFromFirestore, auth, createTestSubmissionFS, getTestSubmissionsForTeacher, getTestSubmissionsForStudent, updateTestSubmissionFS, awardPointsToStudentFS, markMaterialCompletedFS, getMaterialCompletionsForStudent, unmarkMaterialCompletedFS, createCourseAnnouncementFS, updateCourseAnnouncementFS } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import AdminDashboard from './components/dashboard/AdminDashboard';
 import TeacherDashboard from './components/dashboard/TeacherDashboard';
@@ -233,6 +233,7 @@ const App: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [submissions, setSubmissions] = useState<TestSubmission[]>([]);
+    const [materialCompletions, setMaterialCompletions] = useState<Record<string, any[]>>({}); // key: courseId
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     // Used to trigger student course refresh after new course is created
@@ -253,13 +254,24 @@ const App: React.FC = () => {
                 let firestoreUser = await getUserFromFirestore(firebaseUser.uid);
                 if (firestoreUser) {
                     setUser(firestoreUser);
-                    // Fetch courses for user
+                    // Fetch courses & submissions for user role
                     if (firestoreUser.role === 'teacher') {
-                        const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
-                        setCourses(teacherCourses);
+                        const [teacherCourses, subs] = await Promise.all([
+                            getCoursesForTeacher(firestoreUser.id),
+                            getTestSubmissionsForTeacher(firestoreUser.id)
+                        ]);
+                        setCourses(teacherCourses as any);
+                        setSubmissions(subs as any);
                     } else if (firestoreUser.role === 'student') {
-                        const studentCourses = await getCoursesForStudent(firestoreUser.id);
-                        setCourses(studentCourses);
+                        const [studentCourses, subs] = await Promise.all([
+                            getCoursesForStudent(firestoreUser.id),
+                            getTestSubmissionsForStudent(firestoreUser.id)
+                        ]);
+                        setCourses(studentCourses as any);
+                        setSubmissions(subs as any);
+                        // Load material completions per course
+                        const completionsEntries = await Promise.all(studentCourses.map(async c => [c.id, await getMaterialCompletionsForStudent(firestoreUser.id, c.id)] as const));
+                        setMaterialCompletions(Object.fromEntries(completionsEntries));
                     }
                 }
             }
@@ -269,10 +281,16 @@ const App: React.FC = () => {
 
     // When a new course is created, trigger student course refresh
     useEffect(() => {
-        if (user && user.role === 'student') {
+    if (user && user.role === 'student') {
             (async () => {
-                const studentCourses = await getCoursesForStudent(user.id);
-                setCourses(studentCourses);
+        const [studentCourses, subs] = await Promise.all([
+                    getCoursesForStudent(user.id),
+                    getTestSubmissionsForStudent(user.id)
+                ]);
+                setCourses(studentCourses as any);
+                setSubmissions(subs as any);
+        const completionsEntries = await Promise.all(studentCourses.map(async c => [c.id, await getMaterialCompletionsForStudent(user.id, c.id)] as const));
+        setMaterialCompletions(Object.fromEntries(completionsEntries));
             })();
         }
     }, [coursesUpdated, user]);
@@ -380,11 +398,19 @@ const App: React.FC = () => {
             setUser(firestoreUser);
             // Fetch courses for user
             if (firestoreUser.role === 'teacher') {
-                const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
-                setCourses(teacherCourses);
+                const [teacherCourses, subs] = await Promise.all([
+                    getCoursesForTeacher(firestoreUser.id),
+                    getTestSubmissionsForTeacher(firestoreUser.id)
+                ]);
+                setCourses(teacherCourses as any);
+                setSubmissions(subs as any);
             } else if (firestoreUser.role === 'student') {
-                const studentCourses = await getCoursesForStudent(firestoreUser.id);
-                setCourses(studentCourses);
+                const [studentCourses, subs] = await Promise.all([
+                    getCoursesForStudent(firestoreUser.id),
+                    getTestSubmissionsForStudent(firestoreUser.id)
+                ]);
+                setCourses(studentCourses as any);
+                setSubmissions(subs as any);
             }
             setLoginStep('initial');
         } catch (error) {
@@ -405,14 +431,23 @@ const App: React.FC = () => {
         await saveUserToFirestore(firestoreUser);
         setUser(firestoreUser);
         if (role === 'teacher') {
-            const teacherCourses = await getCoursesForTeacher(firestoreUser.id);
-            setCourses(teacherCourses);
+            const [teacherCourses, subs] = await Promise.all([
+                getCoursesForTeacher(firestoreUser.id),
+                getTestSubmissionsForTeacher(firestoreUser.id)
+            ]);
+            setCourses(teacherCourses as any);
+            setSubmissions(subs as any);
         } else if (role === 'student') {
-            // Auto-enroll new student into all existing courses
             const allCourses = await getAllCoursesFromFirestore();
             await Promise.all(allCourses.map(c => enrollStudentInCourse(firestoreUser.id, c.id)));
-            const enrolledCourses = await getCoursesForStudent(firestoreUser.id);
-            setCourses(enrolledCourses);
+            const [enrolledCourses, subs] = await Promise.all([
+                getCoursesForStudent(firestoreUser.id),
+                getTestSubmissionsForStudent(firestoreUser.id)
+            ]);
+            setCourses(enrolledCourses as any);
+            setSubmissions(subs as any);
+            const completionsEntries = await Promise.all(enrolledCourses.map(async c => [c.id, await getMaterialCompletionsForStudent(firestoreUser.id, c.id)] as const));
+            setMaterialCompletions(Object.fromEntries(completionsEntries));
         }
         setPendingGoogleUser(null);
         setLoginStep('initial');
@@ -457,12 +492,69 @@ const App: React.FC = () => {
     
     const handleCreateAnnouncement = async (courseId: string, title: string, content: string) => {
         if (!user) return;
-        const newAnnouncement = await api.createAnnouncement(courseId, user.name, title, content);
+        const newAnnouncement = await createCourseAnnouncementFS(courseId, user.name, title, content);
         setCourses(prevCourses => prevCourses.map(course => 
             course.id === courseId ? { ...course, announcements: [newAnnouncement, ...course.announcements] } : course
         ));
-        // Refresh notifications for demo purposes
-        if (user) setNotifications(await api.getNotificationsForUser(user.id));
+    };
+
+    const handleUpdateAnnouncement = async (courseId: string, announcementId: string, title: string, content: string) => {
+        if (!user) return;
+        const updated = await updateCourseAnnouncementFS(courseId, announcementId, title, content);
+        setCourses(prev => prev.map(c => c.id === courseId ? { ...c, announcements: c.announcements.map(a => a.id === announcementId ? updated : a) } : c));
+    };
+
+    const handleMarkMaterial = async (courseId: string, chapterId: string, materialId: string) => {
+        if (!user || user.role !== 'student') return;
+        const saved = await markMaterialCompletedFS({ studentId: user.id, courseId, chapterId, materialId });
+        setMaterialCompletions(prev => {
+            const updatedForCourse = [...(prev[courseId] || []).filter(m => m.materialId !== materialId), saved];
+            const next = { ...prev, [courseId]: updatedForCourse };
+            recomputeProgressForCourse(courseId, updatedForCourse);
+            return next;
+        });
+    };
+
+    const handleUnmarkMaterial = async (courseId: string, chapterId: string, materialId: string) => {
+        if (!user || user.role !== 'student') return;
+        await unmarkMaterialCompletedFS(user.id, courseId, chapterId, materialId);
+        setMaterialCompletions(prev => {
+            const updatedForCourse = (prev[courseId] || []).filter(m => m.materialId !== materialId);
+            const next = { ...prev, [courseId]: updatedForCourse };
+            recomputeProgressForCourse(courseId, updatedForCourse);
+            return next;
+        });
+    };
+
+    const recomputeProgressForCourse = (courseId: string, completionsOverride?: any[]) => {
+        if (!user || user.role !== 'student') return;
+        const course = courses.find(c => c.id === courseId);
+        if (!course) return;
+        const courseCompletions = completionsOverride ?? materialCompletions[courseId] ?? [];
+        const chapters = course.chapters || [];
+        let totalItems = 0; let completedItems = 0;
+        chapters.forEach(ch => {
+            const mats = ch.materials || [];
+            totalItems += mats.length;
+            mats.forEach(m => {
+                if (courseCompletions.some((mc: any) => mc.materialId === m.id)) completedItems++;
+            });
+            if (ch.test) {
+                totalItems += 1;
+                const myTestSub = submissions.find(s => s.studentId === user.id && s.testId === ch.test!.id && typeof s.score === 'number');
+                if (myTestSub) completedItems++;
+            }
+        });
+        const progressPercent = totalItems === 0 ? 0 : Math.round((completedItems / totalItems) * 100);
+        setStudents(prevStudents => prevStudents.map(st => {
+            if (st.id !== user.id) return st;
+            const existingCourses = st.courses || [];
+            const has = existingCourses.some(c => c.courseId === courseId);
+            const newCourses = has
+                ? existingCourses.map(c => c.courseId === courseId ? { ...c, progress: progressPercent } : c)
+                : [...existingCourses, { courseId, progress: progressPercent }];
+            return { ...st, courses: newCourses };
+        }));
     };
 
     const handleUpdateCourseMaterial = async (courseId: string, chapterId: string, material: CourseMaterial) => {
@@ -491,14 +583,14 @@ const App: React.FC = () => {
 
     const handleTestSubmit = async (answers: { questionId: string; answer: string }[]) => {
         if (!viewContext.testId || !user) return;
-        const newSubmission = await api.createTestSubmission({
+        const newSubmission = await createTestSubmissionFS({
             studentId: user.id,
             courseId: viewContext.courseId,
             chapterId: viewContext.chapterId,
             testId: viewContext.testId,
             answers,
         });
-        setSubmissions(prev => [...prev, newSubmission]);
+        setSubmissions(prev => [...prev, newSubmission as any]);
         // Refresh notifications for demo purposes
         if (user) setNotifications(await api.getNotificationsForUser(user.id));
         navigate('dashboard');
@@ -518,15 +610,20 @@ const App: React.FC = () => {
     };
 
     const handleEvaluateTest = async (submissionId: string, score: number, feedback: string, rubricEvaluation?: Record<string, number>) => {
-        const updatedSubmission = await api.updateSubmissionEvaluation(submissionId, score, feedback, rubricEvaluation);
-        setSubmissions(prev => prev.map(sub => sub.id === submissionId ? updatedSubmission : sub));
-        
+        // Persist evaluation in Firestore
+        const updatedSubmission: any = await updateTestSubmissionFS(submissionId, { score, feedback, rubricEvaluation });
+        setSubmissions(prev => prev.map(sub => sub.id === submissionId ? { ...sub, ...updatedSubmission } : sub));
         const studentToUpdate = students.find(s => s.id === updatedSubmission.studentId);
-        if(studentToUpdate) {
-            const updatedStudent = await api.awardPointsToStudent(studentToUpdate.id, score);
-            setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+        if (studentToUpdate) {
+            try {
+                const updatedStudentFS: any = await awardPointsToStudentFS(studentToUpdate.id, score);
+                setStudents(prev => prev.map(s => s.id === studentToUpdate.id ? { ...s, points: updatedStudentFS.points, badges: updatedStudentFS.badges || s.badges } : s));
+            } catch (e) {
+                console.warn('Failed to award points in Firestore, fallback to mock', e);
+                const updatedStudent = await api.awardPointsToStudent(studentToUpdate.id, score);
+                setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+            }
         }
-
         if (user) setNotifications(await api.getNotificationsForUser(user.id));
     };
     
@@ -691,7 +788,7 @@ const App: React.FC = () => {
             }
             case 'courseDetail': {
                 if (selectedCourse && user) {
-                    return <CourseDetail course={selectedCourse} user={user} students={students} submissions={submissions} onBack={() => navigate('dashboard')} onAddMaterial={addCourseMaterial} onUpdateMaterial={handleUpdateCourseMaterial} onDeleteMaterial={deleteCourseMaterial} onAttemptTest={(courseId, chapterId, testId) => navigate('testTaking', { courseId, chapterId, testId })} onViewFeedback={handleViewFeedback} onAddAnnouncement={handleCreateAnnouncement} onNavigate={navigate} onCreateDiscussion={handleCreateDiscussionThread} />;
+                    return <CourseDetail course={selectedCourse} user={user} students={students} submissions={submissions} onBack={() => navigate('dashboard')} onAddMaterial={addCourseMaterial} onUpdateMaterial={handleUpdateCourseMaterial} onDeleteMaterial={deleteCourseMaterial} onAttemptTest={(courseId, chapterId, testId) => navigate('testTaking', { courseId, chapterId, testId })} onViewFeedback={handleViewFeedback} onAddAnnouncement={handleCreateAnnouncement} onUpdateAnnouncement={handleUpdateAnnouncement} onNavigate={navigate} onCreateDiscussion={handleCreateDiscussionThread} materialCompletions={materialCompletions[selectedCourse.id] || []} onMarkMaterial={handleMarkMaterial} onUnmarkMaterial={handleUnmarkMaterial} />;
                 }
                 return null;
             }
@@ -714,7 +811,7 @@ const App: React.FC = () => {
                     case 'student':
                         const studentUser = students.find(s => s.id === user.id);
                         if (!studentUser) return <div>Loading student data...</div>;
-                        return <StudentDashboard user={studentUser} courses={courses} submissions={submissions} onSelectCourse={(courseId) => navigate('courseDetail', { courseId })} onAttemptTest={(courseId, chapterId, testId) => navigate('testTaking', { courseId, chapterId, testId })} onViewFeedback={handleViewFeedback} setCourses={setCourses} />;
+                        return <StudentDashboard user={studentUser} courses={courses} submissions={submissions} onSelectCourse={(courseId) => navigate('courseDetail', { courseId })} onAttemptTest={(courseId, chapterId, testId) => navigate('testTaking', { courseId, chapterId, testId })} onViewFeedback={handleViewFeedback} setCourses={setCourses} materialCompletions={materialCompletions} />;
                     case 'parent':
                         const parentUser = user as Parent;
                         const child = students.find(s => s.id === parentUser.childId);

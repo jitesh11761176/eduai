@@ -113,9 +113,10 @@ interface StudentDashboardProps {
   onAttemptTest: (courseId: string, chapterId: string, testId: string) => void;
   onViewFeedback: (submissionId: string) => void;
   setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
+    materialCompletions?: Record<string, any[]>; // keyed by courseId
 }
 
-const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, courses, submissions, onSelectCourse, onAttemptTest, onViewFeedback, setCourses }) => {
+const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, courses, submissions, onSelectCourse, onAttemptTest, onViewFeedback, setCourses, materialCompletions = {} }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [focusPlan, setFocusPlan] = useState<FocusPlan | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
@@ -325,11 +326,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ user, courses, subm
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {filteredCourses.map(course => {
                         // Defensive: Only use user.courses if it exists and is an array
-                        let progress = 0;
-                        if (Array.isArray(user.courses)) {
-                            const courseProgressData = user.courses.find(c => c.courseId === course.id);
-                            progress = courseProgressData ? courseProgressData.progress : 0;
-                        }
+                        // Recompute progress using completions + graded tests
+                        const completions = materialCompletions[course.id] || [];
+                        let totalItems = 0; let completedItems = 0;
+                        course.chapters.forEach(ch => {
+                            const mats = ch.materials || [];
+                            totalItems += mats.length;
+                            mats.forEach(m => { if (completions.some((mc:any) => mc.materialId === m.id)) completedItems++; });
+                            if (ch.test) {
+                                totalItems += 1;
+                                const myTestSub = submissions.find(s => s.studentId === user.id && s.testId === ch.test!.id && typeof s.score === 'number');
+                                if (myTestSub) completedItems++;
+                            }
+                        });
+                        const progress = totalItems === 0 ? 0 : Math.round((completedItems / totalItems) * 100);
                         return (
                         <Card key={course.id} className="flex flex-col" onClick={() => onSelectCourse(course.id)}>
                             <div className="p-6 flex-grow">

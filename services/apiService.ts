@@ -1,6 +1,6 @@
 import { mockCourses, mockStudents, mockTeachers, mockSubmissions, mockNotifications, mockBadges } from '../data/mockData';
 import { Course, Student, Teacher, TestSubmission, CourseMaterial, Test, UserRole, Announcement, Notification, View, DiscussionThread, DiscussionPost, CalendarEvent, Rubric } from '../types';
-import { addMaterialToChapter } from './firebase';
+import { addMaterialToChapter, addTestToChapter } from './firebase';
 
 // --- In-memory database simulation ---
 let coursesDB: Course[] = JSON.parse(JSON.stringify(mockCourses));
@@ -96,6 +96,18 @@ export const createAnnouncement = async (courseId: string, authorName: string, t
     return JSON.parse(JSON.stringify(newAnnouncement));
 };
 
+export const updateAnnouncement = async (courseId: string, announcementId: string, title: string, content: string): Promise<Announcement> => {
+    await delay(300);
+    const course = coursesDB.find(c => c.id === courseId);
+    if (!course) throw new Error('Course not found');
+    const announcement = course.announcements.find(a => a.id === announcementId);
+    if (!announcement) throw new Error('Announcement not found');
+    announcement.title = title;
+    announcement.content = content;
+    // Keep createdAt as original; could add updatedAt field if type extended later
+    return JSON.parse(JSON.stringify(announcement));
+};
+
 export const createCourseMaterial = async (courseId: string, chapterId: string, material: Omit<CourseMaterial, 'id'>): Promise<CourseMaterial> => {
     // Use Firestore helper
     const newMaterial = await addMaterialToChapter(courseId, chapterId, material);
@@ -148,23 +160,9 @@ export const createTestSubmission = async (submissionData: Omit<TestSubmission, 
 };
 
 export const createTest = async (courseId: string, chapterId: string, testDetails: Pick<Test, 'title' | 'questions' | 'isAdaptive' | 'rubric'> & { duration?: number }): Promise<Test> => {
-    await delay(500);
-    const course = coursesDB.find(c => c.id === courseId);
-    if (!course) throw new Error("Course not found");
-    
-    const chapter = course.chapters.find(ch => ch.id === chapterId);
-    if (!chapter) throw new Error("Chapter not found");
-
-    if(chapter.test) throw new Error("Chapter already has a test");
-
-    const newTest: Test = {
-        id: `t_${Date.now()}`,
-        type: 'online',
-        ...testDetails
-    };
-
-    chapter.test = newTest;
-    return JSON.parse(JSON.stringify(newTest));
+    // Persist directly to Firestore
+    const newTest = await addTestToChapter(courseId, chapterId, testDetails);
+    return newTest as Test;
 };
 
 export const updateSubmissionEvaluation = async (submissionId: string, score: number, feedback: string, rubricEvaluation?: Record<string, number>): Promise<TestSubmission> => {

@@ -738,3 +738,44 @@ export const getAdaptivePathwayStep = async (lastSubmission: TestSubmission | un
     }
     return { action: 'continue' };
 };
+
+// Generate a concise test performance summary highlighting strengths & focus areas
+export const generateTestPerformanceSummary = async (
+    test: { title: string; questions: Question[] },
+    submissions: TestSubmission[],
+    course: Course
+): Promise<{ strengths: string[]; focusAreas: string[]; overall: string; suggestedActions: string[]; }> => {
+    const graded = submissions.filter(s => typeof s.score === 'number');
+    const scores = graded.map(s => s.score as number);
+    const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2) : '0';
+    const median = scores.length ? (scores.length % 2 ? [...scores].sort((a,b)=>a-b)[Math.floor(scores.length/2)] : (([...scores].sort((a,b)=>a-b)[scores.length/2-1] + [...scores].sort((a,b)=>a-b)[scores.length/2]) / 2)) : 0;
+    const prompt = `You are an assessment analyst. Provide a JSON summary for the test "${test.title}" in course "${course.title}".
+Test questions: ${JSON.stringify(test.questions)}
+Graded submissions with (studentId hidden) scores: ${JSON.stringify(graded.map(g=>({score:g.score, answers:g.answers}))) }
+Average score: ${avg}, Median score: ${median}.
+Return JSON with keys: overall (string, 2 sentences), strengths (string[] 2-4 concise learning areas students did well), focusAreas (string[] 2-4 areas needing improvement), suggestedActions (string[] 2-4 actionable teacher strategies).`;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        overall: { type: Type.STRING },
+                        strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        focusAreas: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        suggestedActions: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['overall','strengths','focusAreas','suggestedActions']
+                }
+            }
+        });
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
+    } catch (err) {
+        console.error('Error generating test performance summary', err);
+        throw new Error('Failed to generate test performance summary');
+    }
+};
