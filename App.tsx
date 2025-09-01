@@ -596,16 +596,21 @@ const App: React.FC = () => {
         navigate('dashboard');
     };
 
-    const handleCreateTest = async (courseId: string, chapterId: string, testDetails: Pick<Test, 'title' | 'questions' | 'isAdaptive' | 'rubric'> & { duration?: number }) => {
-        const newTest = await api.createTest(courseId, chapterId, testDetails);
-        setCourses(prevCourses => prevCourses.map(course => {
-            if (course.id === courseId) {
-                return { ...course, chapters: course.chapters.map(chapter => 
-                    chapter.id === chapterId ? { ...chapter, test: newTest } : chapter
-                )};
-            }
-            return course;
-        }));
+    const handleCreateTest = async (courseId: string, chapterIds: string[], testDetails: Pick<Test, 'title' | 'questions' | 'isAdaptive' | 'rubric'> & { duration?: number }) => {
+        // Create a test for each selected chapter (topics). If multiple, append an index to title for uniqueness.
+        for (let i = 0; i < chapterIds.length; i++) {
+            const chapterId = chapterIds[i];
+            const title = chapterIds.length > 1 ? `${testDetails.title} (Part ${i + 1})` : testDetails.title;
+            const newTest = await api.createTest(courseId, chapterId, { ...testDetails, title });
+            setCourses(prevCourses => prevCourses.map(course => {
+                if (course.id === courseId) {
+                    return { ...course, chapters: course.chapters.map(chapter => 
+                        chapter.id === chapterId ? { ...chapter, test: newTest } : chapter
+                    )};
+                }
+                return course;
+            }));
+        }
         navigate('courseDetail', { courseId });
     };
 

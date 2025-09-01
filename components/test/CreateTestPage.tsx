@@ -12,10 +12,11 @@ type QuestionDraft = Omit<Question, 'id'> & { id: string | number };
 const CreateTestPage: React.FC<{
   courses: Course[];
   onBack: () => void;
-  onCreateTest: (courseId: string, chapterId: string, testDetails: Pick<Test, 'title' | 'questions' | 'isAdaptive' | 'rubric'> & { duration?: number }) => void;
+  onCreateTest: (courseId: string, chapterIds: string[], testDetails: Pick<Test, 'title' | 'questions' | 'isAdaptive' | 'rubric'> & { duration?: number }) => Promise<void> | void;
 }> = ({ courses, onBack, onCreateTest }) => {
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [selectedChapterId, setSelectedChapterId] = useState('');
+  // Multi-select chapters (topics)
+  const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([]);
   const [testTitle, setTestTitle] = useState('');
   const [questions, setQuestions] = useState<QuestionDraft[]>([
     { id: Date.now(), text: '', type: 'subjective' }
@@ -28,8 +29,24 @@ const CreateTestPage: React.FC<{
   const [isRubricModalOpen, setIsRubricModalOpen] = useState(false);
   const [rubric, setRubric] = useState<Rubric | undefined>(undefined);
 
+  const toggleChapter = (chapterId: string) => {
+    setSelectedChapterIds(prev => prev.includes(chapterId) ? prev.filter(id => id !== chapterId) : [...prev, chapterId]);
+  };
+
   const selectedCourse = useMemo(() => courses.find(c => c.id === selectedCourseId), [courses, selectedCourseId]);
-  const selectedChapter = useMemo(() => selectedCourse?.chapters.find(c => c.id === selectedChapterId), [selectedCourse, selectedChapterId]);
+  const selectedChapters = useMemo(() => selectedCourse?.chapters.filter(c => selectedChapterIds.includes(c.id)) || [], [selectedCourse, selectedChapterIds]);
+  const firstSelectedChapter = selectedChapters[0]; // Used for AI generation features (assumption)
+  const mergedChapterForQuiz = useMemo(() => {
+    if (selectedChapters.length <= 1) return firstSelectedChapter;
+    // Combine materials
+    return {
+      id: 'multi',
+      title: selectedChapters.map(c => c.title).join(', '),
+      materials: selectedChapters.flatMap(c => c.materials),
+      completed: false,
+      test: undefined
+    } as any; // Cast to Chapter shape for existing modal usage
+  }, [selectedChapters, firstSelectedChapter]);
   
   const availableChapters = useMemo(() => {
     if (!selectedCourse) return [];
@@ -38,7 +55,7 @@ const CreateTestPage: React.FC<{
 
   const isFormValid = useMemo(() => {
     if (questions.length === 0) return false;
-    const baseValid = selectedCourseId && selectedChapterId && testTitle.trim() && questions.every(q => {
+    const baseValid = selectedCourseId && selectedChapterIds.length > 0 && testTitle.trim() && questions.every(q => {
         if (!q.text.trim()) return false;
         if (q.type === 'mcq' && (!q.options || q.options.length < 2 || q.options.some(opt => !opt.trim()) || !q.correctAnswer)) return false;
         if (q.type === 'true-false' && !q.correctAnswer) return false;
@@ -47,22 +64,34 @@ const CreateTestPage: React.FC<{
     if (!baseValid) return false;
     if (isTimed && (isNaN(duration) || duration <= 0)) return false;
     return true;
-  }, [selectedCourseId, selectedChapterId, testTitle, questions, isTimed, duration]);
+  }, [selectedCourseId, selectedChapterIds, testTitle, questions, isTimed, duration]);
 
   const handleGenerateWithAI = async () => {
-    if (!selectedCourse || !selectedChapterId) return;
-    const chapter = selectedCourse.chapters.find(c => c.id === selectedChapterId);
-    if (!chapter) return;
-
+    if (!selectedCourse || selectedChapterIds.length === 0) return;
     setIsGenerating(true);
     try {
-      const result = await generateTestQuestion(selectedCourse.title, selectedCourse.classLevel, selectedCourse.subject, chapter.title);
-      if(!testTitle.trim()) setTestTitle(result.title);
-      // Add as a new subjective question
-      setQuestions(prev => [...prev, { id: Date.now(), text: result.question, type: 'subjective' }]);
+      if (selectedChapterIds.length === 1) {
+        const chapter = selectedCourse.chapters.find(c => c.id === selectedChapterIds[0]);
+        if (!chapter) return;
+        const result = await generateTestQuestion(selectedCourse.title, selectedCourse.classLevel, selectedCourse.subject, chapter.title);
+        if(!testTitle.trim()) setTestTitle(result.title);
+        setQuestions(prev => [...prev, { id: Date.now(), text: result.question, type: 'subjective' }]);
+      } else {
+        const multiTitle = selectedChapters.map(c => c.title).join(' + ');
+        if(!testTitle.trim()) setTestTitle(`Multi-Topic Assessment: ${multiTitle}`);
+        // Generate one question per topic sequentially (to avoid rate limits)
+        for (const chap of selectedChapters) {
+          try {
+            const result = await generateTestQuestion(selectedCourse.title, selectedCourse.classLevel, selectedCourse.subject, chap.title);
+            setQuestions(prev => [...prev, { id: Date.now() + Math.random(), text: `[${chap.title}] ${result.question}`, type: 'subjective' }]);
+          } catch (err) {
+            console.warn('Failed to generate question for', chap.title, err);
+          }
+        }
+      }
     } catch (error) {
       console.error(error);
-      alert("Failed to generate question with AI.");
+      alert("Failed to generate question(s) with AI.");
     } finally {
       setIsGenerating(false);
     }
@@ -130,7 +159,7 @@ const CreateTestPage: React.FC<{
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
 
@@ -153,7 +182,8 @@ const CreateTestPage: React.FC<{
         testDetails.duration = duration;
     }
 
-    onCreateTest(selectedCourseId, selectedChapterId, testDetails);
+  // Create identical test for each selected chapter (topic)
+  await onCreateTest(selectedCourseId, selectedChapterIds, testDetails);
   };
   
   const renderQuestionEditor = (q: QuestionDraft, index: number) => {
@@ -222,24 +252,46 @@ const CreateTestPage: React.FC<{
              <legend className="sr-only">Course and Chapter Selection</legend>
               <div>
                 <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">Select a Course</label>
-                <select id="course" value={selectedCourseId} onChange={e => {setSelectedCourseId(e.target.value); setSelectedChapterId('');}} className="w-full p-2 border border-gray-300 rounded-md" required>
+                <select id="course" value={selectedCourseId} onChange={e => {setSelectedCourseId(e.target.value); setSelectedChapterIds([]);}} className="w-full p-2 border border-gray-300 rounded-md" required>
                   <option value="" disabled>-- Choose a course --</option>
                   {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="chapter" className="block text-sm font-medium text-gray-700 mb-1">Select a Chapter</label>
-                <select id="chapter" value={selectedChapterId} onChange={e => setSelectedChapterId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" disabled={!selectedCourseId || availableChapters.length === 0} required>
-                  <option value="" disabled>{!selectedCourseId ? "Select course first" : "Choose a chapter"}</option>
-                  {availableChapters.map(ch => <option key={ch.id} value={ch.id}>{ch.title}</option>)}
-                </select>
+                <span className="block text-sm font-medium text-gray-700 mb-1">Select Topics (Chapters)</span>
+                <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md min-h-[58px] bg-white">
+                  {(!selectedCourseId || availableChapters.length === 0) && (
+                    <span className="text-xs text-gray-400">{!selectedCourseId ? 'Choose a course first' : 'No available chapters'}</span>
+                  )}
+                  {availableChapters.map(ch => {
+                    const selected = selectedChapterIds.includes(ch.id);
+                    return (
+                      <button
+                        type="button"
+                        key={ch.id}
+                        onClick={() => toggleChapter(ch.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 ${selected ? 'bg-primary-600 text-white border-primary-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-300'}`}
+                        disabled={!selectedCourseId}
+                        aria-pressed={selected}
+                      >
+                        {ch.title}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-gray-500">Click to toggle. Selected: {selectedChapterIds.length || 0}</p>
+                  {selectedChapterIds.length > 0 && (
+                    <button type="button" onClick={() => setSelectedChapterIds([])} className="text-xs text-red-500 hover:underline">Clear</button>
+                  )}
+                </div>
               </div>
           </fieldset>
           
-          <fieldset disabled={!selectedChapterId} className="border-t pt-6 space-y-4">
+          <fieldset disabled={selectedChapterIds.length === 0} className="border-t pt-6 space-y-4">
             <legend className="sr-only">Test Details</legend>
             <div className="flex justify-end">
-                <Button type="button" variant="primary" onClick={() => setIsQuizModalOpen(true)} disabled={!selectedChapterId}>
+                <Button type="button" variant="primary" onClick={() => setIsQuizModalOpen(true)} disabled={selectedChapterIds.length === 0}>
                     <Sparkles size={16} className="mr-2" /> Generate Full Quiz with AI
                 </Button>
             </div>
@@ -277,7 +329,9 @@ const CreateTestPage: React.FC<{
             </div>
              <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <Button type="button" variant="secondary" onClick={handleAddQuestion}><Plus size={16} className="mr-2" /> Add Question Manually</Button>
-                <Button type="button" variant="secondary" onClick={handleGenerateWithAI} loading={isGenerating}><Sparkles size={16} /> {isGenerating ? 'Generating...' : 'Add AI Subjective Question'}</Button>
+                <Button type="button" variant="secondary" onClick={handleGenerateWithAI} loading={isGenerating} disabled={selectedChapterIds.length === 0}>
+                  <Sparkles size={16} /> {isGenerating ? 'Generating...' : (selectedChapterIds.length > 1 ? 'Add AI Questions (All Topics)' : 'Add AI Subjective Question')}
+                </Button>
             </div>
           </fieldset>
 
@@ -287,13 +341,13 @@ const CreateTestPage: React.FC<{
         </form>
       </Card>
     </div>
-    {isQuizModalOpen && selectedCourse && selectedChapter && (
+  {isQuizModalOpen && selectedCourse && mergedChapterForQuiz && selectedChapterIds.length > 0 && (
         <GenerateQuizModal
             isOpen={isQuizModalOpen}
             onClose={() => setIsQuizModalOpen(false)}
             onQuizGenerated={handleQuizGenerated}
-            course={selectedCourse}
-            chapter={selectedChapter}
+      course={selectedCourse}
+      chapter={mergedChapterForQuiz}
         />
     )}
     {isRubricModalOpen && (
