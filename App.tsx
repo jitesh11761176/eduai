@@ -51,7 +51,7 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description:
     </div>
 );
 
-const LoginScreen: React.FC<{ onGoogleSignIn: () => void }> = ({ onGoogleSignIn }) => {
+const LoginScreen: React.FC<{ onGoToLogin: () => void }> = ({ onGoToLogin }) => {
     const quotes = [
         "The future belongs to those who believe in the beauty of their dreams.",
         "Your education is a dress rehearsal for a life that is yours to lead.",
@@ -83,10 +83,10 @@ const LoginScreen: React.FC<{ onGoogleSignIn: () => void }> = ({ onGoogleSignIn 
             <div className="container mx-auto flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-primary-600">EduAI Platform</h1>
                 <button 
-                    onClick={onGoogleSignIn}
+                    onClick={onGoToLogin}
                     className="hidden sm:inline-flex items-center bg-primary-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-primary-700 transition duration-300 shadow-sm"
                 >
-                    Sign In
+                    Dashboard
                 </button>
             </div>
         </header>
@@ -113,11 +113,10 @@ const LoginScreen: React.FC<{ onGoogleSignIn: () => void }> = ({ onGoogleSignIn 
                             <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to EduAI</h2>
                             <p className="text-gray-600 mb-6">Your AI-Powered Learning Companion</p>
                             <button 
-                                onClick={onGoogleSignIn} 
+                                onClick={onGoToLogin} 
                                 className="w-full flex items-center justify-center bg-white text-gray-700 font-semibold py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 transition duration-300 shadow-sm"
                             >
-                                <GoogleLogo />
-                                <span className="ml-3">Sign in with Google</span>
+                                <span className="ml-1 font-semibold">Go to Login</span>
                             </button>
                         </div>
                     </div>
@@ -225,6 +224,68 @@ const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({ onSelectRole,
 );
 
 
+// LoginPage with Google + Email auth
+const LoginPage: React.FC<{ 
+    onGoogle: () => void; 
+    onBack: () => void; 
+    onEmailLogin: (email: string, password: string) => void;
+    onEmailRegister: (name: string, email: string, password: string, role: UserRole) => void;
+    error: string | null;
+    pending: boolean;
+}> = ({ onGoogle, onBack, onEmailLogin, onEmailRegister, error, pending }) => {
+    const [isRegister, setIsRegister] = useState(false);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState<UserRole>('student');
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isRegister) onEmailRegister(name, email, password, role); else onEmailLogin(email, password);
+    };
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-white p-4">
+            <div className="max-w-md w-full bg-white/80 backdrop-blur rounded-xl shadow-lg p-8 border border-white/50">
+                <button onClick={onBack} className="text-sm text-gray-500 hover:underline mb-4">← Back</button>
+                <h2 className="text-2xl font-bold mb-1 text-gray-800">{isRegister ? 'Create Account' : 'Login'}</h2>
+                <p className="text-gray-500 mb-6">Access your EduAI dashboard</p>
+                {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
+                <form onSubmit={submit} className="space-y-4">
+                    {isRegister && (
+                        <input value={name} onChange={e=>setName(e.target.value)} required className="w-full border rounded px-3 py-2" placeholder="Full Name" />
+                    )}
+                    <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required className="w-full border rounded px-3 py-2" placeholder="Email" />
+                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="w-full border rounded px-3 py-2" placeholder="Password" />
+                    {isRegister && (
+                        <select value={role} onChange={e=>setRole(e.target.value as UserRole)} className="w-full border rounded px-3 py-2">
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="parent">Parent</option>
+                            <option value="principal">Principal</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    )}
+                    <button disabled={pending} type="submit" className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700 disabled:opacity-50">
+                        {pending ? 'Please wait...' : (isRegister ? 'Register' : 'Login')}
+                    </button>
+                </form>
+                <div className="my-6 flex items-center gap-2 text-gray-400 text-sm">
+                    <span className="flex-1 h-px bg-gray-200" /> OR <span className="flex-1 h-px bg-gray-200" />
+                </div>
+                <button onClick={onGoogle} className="w-full flex items-center justify-center bg-white text-gray-700 font-semibold py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 transition">
+                    <GoogleLogo />
+                    <span className="ml-3">Continue with Google</span>
+                </button>
+                <p className="mt-6 text-center text-sm text-gray-600">
+                    {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+                    <button onClick={()=>setIsRegister(r=>!r)} className="text-primary-600 font-medium hover:underline">
+                        {isRegister ? 'Login' : 'Register'}
+                    </button>
+                </p>
+            </div>
+        </div>
+    );
+};
+
 const App: React.FC = () => {
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
     // Store Google user info temporarily after login
@@ -244,7 +305,9 @@ const App: React.FC = () => {
     const [viewingSubmissionId, setViewingSubmissionId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [aiNudge, setAiNudge] = useState<{ message: string; cta: { text: string; action: () => void } } | null>(null);
-    const [loginStep, setLoginStep] = useState<'initial' | 'roleSelection'>('initial');
+    const [loginStep, setLoginStep] = useState<'landing' | 'loginPage' | 'roleSelection'>('landing');
+    const [authError, setAuthError] = useState<string | null>(null);
+    const [authPending, setAuthPending] = useState(false);
 
     // Persistent login: listen for Firebase Auth state changes
     useEffect(() => {
@@ -370,7 +433,7 @@ const App: React.FC = () => {
             }
         });
         setView('dashboard');
-        setLoginStep('initial'); // Reset for next login
+            setLoginStep('landing'); // Reset for next login
     }, []);
 
     const handleLogout = useCallback(() => {
@@ -379,7 +442,7 @@ const App: React.FC = () => {
         setViewContext({});
         setViewingSubmissionId(null);
         setIsSidebarOpen(false);
-        setLoginStep('initial'); // Reset login flow
+    setLoginStep('landing'); // Reset login flow
     }, []);
     
     // Google sign-in handler using Firebase and Firestore
@@ -412,7 +475,7 @@ const App: React.FC = () => {
                 setCourses(studentCourses as any);
                 setSubmissions(subs as any);
             }
-            setLoginStep('initial');
+            setLoginStep('landing');
         } catch (error) {
             alert('Google sign-in failed. Please try again.');
         }
@@ -450,9 +513,42 @@ const App: React.FC = () => {
             setMaterialCompletions(Object.fromEntries(completionsEntries));
         }
         setPendingGoogleUser(null);
-        setLoginStep('initial');
+        setLoginStep('landing');
     };
     const handleBackToLogin = () => setLoginStep('initial');
+    const handleBackToLanding = () => setLoginStep('landing');
+
+    // Email auth handlers
+    const handleEmailLogin = async (email: string, password: string) => {
+        try {
+            setAuthPending(true); setAuthError(null);
+            const { signInWithEmail } = await import('./services/firebase');
+            const fbUser = await signInWithEmail(email, password);
+            const firestoreUser = await getUserFromFirestore(fbUser.uid);
+            if (!firestoreUser) {
+                setAuthError('Account exists but user profile missing. Use Google or register again.');
+                return;
+            }
+            setUser(firestoreUser as any);
+            setLoginStep('landing');
+        } catch (e: any) {
+            setAuthError(e.message || 'Login failed');
+        } finally { setAuthPending(false); }
+    };
+    const handleEmailRegister = async (name: string, email: string, password: string, role: UserRole) => {
+        try {
+            setAuthPending(true); setAuthError(null);
+            const { registerWithEmail } = await import('./services/firebase');
+            const fbUser = await registerWithEmail(name, email, password, role);
+            const firestoreUser = await getUserFromFirestore(fbUser.uid);
+            if (firestoreUser) {
+                setUser(firestoreUser as any);
+                setLoginStep('landing');
+            }
+        } catch (e: any) {
+            setAuthError(e.message || 'Registration failed');
+        } finally { setAuthPending(false); }
+    };
 
     const authContextValue = useMemo(() => ({ user, logout: handleLogout }), [user, handleLogout]);
     
@@ -701,14 +797,15 @@ const App: React.FC = () => {
     const handleCloseFeedbackModal = () => setViewingSubmissionId(null);
 
     if (!user) {
-        if (loginStep === 'initial') {
-            return <LoginScreen onGoogleSignIn={handleGoogleSignIn} />;
+        if (loginStep === 'landing') {
+            return <LoginScreen onGoToLogin={() => setLoginStep('loginPage')} />;
+        }
+        if (loginStep === 'loginPage') {
+            return <LoginPage onGoogle={handleGoogleSignIn} onBack={() => setLoginStep('landing')} onEmailLogin={handleEmailLogin} onEmailRegister={handleEmailRegister} error={authError} pending={authPending} />;
         }
         if (loginStep === 'roleSelection') {
-            // For new Google users, allow all roles
-            return <RoleSelectionScreen onSelectRole={handleRoleSelection} onBack={handleBackToLogin} />;
+            return <RoleSelectionScreen onSelectRole={handleRoleSelection} onBack={() => setLoginStep('loginPage')} />;
         }
-        return <LoginScreen onGoogleSignIn={handleGoogleSignIn} />; // Fallback
     }
 
     if (isLoading) return <LoadingSpinner />;

@@ -118,7 +118,7 @@ export const getAllStudentsFromFirestore = async () => {
 };
 // Firebase config and initialization
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, User as FirebaseUser } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, User as FirebaseUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, where, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -141,6 +141,29 @@ const provider = new GoogleAuthProvider();
 export const signInWithGoogle = async () => {
   const result = await signInWithPopup(auth, provider);
   return result.user;
+};
+
+// Email/password registration
+export const registerWithEmail = async (name: string, email: string, password: string, role: string) => {
+  const creds = await createUserWithEmailAndPassword(auth, email, password);
+  if (auth.currentUser) {
+    try { await updateProfile(auth.currentUser, { displayName: name }); } catch {}
+  }
+  // Save immediately to Firestore with provided role
+  await saveUserToFirestore({
+    id: creds.user.uid,
+    name,
+    email,
+    role,
+    avatarUrl: ''
+  });
+  return creds.user;
+};
+
+// Email/password sign in
+export const signInWithEmail = async (email: string, password: string) => {
+  const creds = await signInWithEmailAndPassword(auth, email, password);
+  return creds.user;
 };
 
 // Firestore helpers
