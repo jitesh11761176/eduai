@@ -227,51 +227,53 @@ const AddOrEditMaterialModal: React.FC<AddOrEditMaterialModalProps> = ({ isOpen,
 
   {(type === 'file' || type === 'drive') && renderDriveFields()}
 
-    {type === 'interactive' && interactiveContent?.type === 'fill-in-the-blank' && (
+    {type === 'interactive' && (
       <>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Fill-in-the-Blank Exercise</label>
-        <p className="text-xs text-gray-500 mt-1">Create a sentence by mixing text and blank inputs. The text in the blank field will be the correct answer.</p>
-        <div className="mt-2 p-3 border rounded-lg space-y-2 bg-gray-50">
-          <div className='flex flex-wrap items-center gap-2'>
-          {interactiveContent.sentences.map((part, index) =>
-            typeof part === 'string' ? (
-              <React.Fragment key={index}>
-              <input
-                type="text"
-                value={part}
-                onChange={(e) => handleInteractiveChange(index, e.target.value, false)}
-                className="p-2 border border-gray-300 rounded-md"
-                placeholder="Text..."
-              />
-              <button type="button" onClick={() => addInteractiveSentencePart(index)} className="text-primary-600 hover:text-primary-800"><PlusCircle size={20}/></button>
-              </React.Fragment>
-            ) : (
-               <input
-                key={index}
-                type="text"
-                value={part.blank}
-                onChange={(e) => handleInteractiveChange(index, e.target.value, true)}
-                className="p-2 border-2 border-primary-400 rounded-md bg-primary-100 w-32"
-                placeholder="Blank..."
-              />
-            )
-          )}
-          </div>
+        <div className="mt-4">
+          <label htmlFor="interactive-drive-link" className="block text-sm font-medium text-gray-700">Google Drive Link (PDFs, Slides, etc.)</label>
+          <input
+            type="url"
+            id="interactive-drive-link"
+            value={driveLink}
+            onChange={e => setDriveLink(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            placeholder="https://drive.google.com/file/d/..."
+          />
+          <p className="mt-2 text-xs text-gray-500">(Optional) Attach a Google Drive link to share PDFs, slides, or other resources for this exercise.</p>
         </div>
-      </div>
-      <div className="mt-4">
-        <label htmlFor="interactive-drive-link" className="block text-sm font-medium text-gray-700">Google Drive Link (PDFs, Slides, etc.)</label>
-        <input
-          type="url"
-          id="interactive-drive-link"
-          value={driveLink}
-          onChange={e => setDriveLink(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          placeholder="https://drive.google.com/file/d/..."
-        />
-        <p className="mt-2 text-xs text-gray-500">(Optional) Attach a Google Drive link to share PDFs, slides, or other resources for this exercise.</p>
-      </div>
+        {interactiveContent?.type === 'fill-in-the-blank' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Fill-in-the-Blank Exercise</label>
+            <p className="text-xs text-gray-500 mt-1">Create a sentence by mixing text and blank inputs. The text in the blank field will be the correct answer.</p>
+            <div className="mt-2 p-3 border rounded-lg space-y-2 bg-gray-50">
+              <div className='flex flex-wrap items-center gap-2'>
+              {interactiveContent.sentences.map((part, index) =>
+                typeof part === 'string' ? (
+                  <React.Fragment key={index}>
+                  <input
+                    type="text"
+                    value={part}
+                    onChange={(e) => handleInteractiveChange(index, e.target.value, false)}
+                    className="p-2 border border-gray-300 rounded-md"
+                    placeholder="Text..."
+                  />
+                  <button type="button" onClick={() => addInteractiveSentencePart(index)} className="text-primary-600 hover:text-primary-800"><PlusCircle size={20}/></button>
+                  </React.Fragment>
+                ) : (
+                   <input
+                    key={index}
+                    type="text"
+                    value={part.blank}
+                    onChange={(e) => handleInteractiveChange(index, e.target.value, true)}
+                    className="p-2 border-2 border-primary-400 rounded-md bg-primary-100 w-32"
+                    placeholder="Blank..."
+                  />
+                )
+              )}
+              </div>
+            </div>
+          </div>
+        )}
       </>
     )}
 
