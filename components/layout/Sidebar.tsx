@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, navigate, isOpen, setIsO
           ))}
         </nav>
         <div className="p-4 border-t">
-          <p className="text-sm text-gray-500">© 2024 EduAI Inc.</p>
+          <p className="text-sm text-gray-500">© {new Date().getFullYear()} EduAI Inc.</p>
         </div>
       </div>
     </>
