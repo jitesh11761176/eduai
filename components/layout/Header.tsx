@@ -3,6 +3,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { Menu } from 'lucide-react';
 import { Notification, View } from '../../types';
 import NotificationBell from '../notifications/NotificationBell';
+import Avatar from '../common/Avatar';
 
 interface HeaderProps {
     toggleSidebar: () => void;
@@ -34,7 +35,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, notifications, onMarkNot
           <p className="font-semibold text-gray-800">{user.name}</p>
           <p className="text-sm text-gray-500 capitalize">{user.role}</p>
         </div>
-        <img src={user.avatarUrl} alt="User Avatar" className="w-10 h-10 rounded-full" />
+  <Avatar name={user.name} src={user.avatarUrl} size={40} />
         <button 
           onClick={logout} 
           className="ml-2 px-3 py-1.5 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors"

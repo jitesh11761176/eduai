@@ -489,7 +489,7 @@ const App: React.FC = () => {
             name: pendingGoogleUser.displayName || pendingGoogleUser.email || 'Google User',
             email: pendingGoogleUser.email || '',
             role: role,
-            avatarUrl: pendingGoogleUser.photoURL || ''
+            avatarUrl: pendingGoogleUser.photoURL || (await import('./utils/avatarUtils')).generateInitialAvatar(pendingGoogleUser.displayName || pendingGoogleUser.email || 'User')
         };
         await saveUserToFirestore(firestoreUser);
         setUser(firestoreUser);
@@ -530,6 +530,33 @@ const App: React.FC = () => {
                 return;
             }
             setUser(firestoreUser as any);
+            // Load role-specific data
+            if ((firestoreUser as any).role === 'teacher') {
+                const [teacherCourses, subs] = await Promise.all([
+                    getCoursesForTeacher((firestoreUser as any).id),
+                    getTestSubmissionsForTeacher((firestoreUser as any).id)
+                ]);
+                setCourses(teacherCourses as any);
+                setSubmissions(subs as any);
+            } else if ((firestoreUser as any).role === 'student') {
+                let [studentCourses, subs] = await Promise.all([
+                    getCoursesForStudent((firestoreUser as any).id),
+                    getTestSubmissionsForStudent((firestoreUser as any).id)
+                ]);
+                // If the student has no enrollments yet, auto-enroll into all existing courses
+                if (!studentCourses || studentCourses.length === 0) {
+                    const allCourses = await getAllCoursesFromFirestore();
+                    await Promise.all(allCourses.map(c => enrollStudentInCourse((firestoreUser as any).id, c.id)));
+                    [studentCourses, subs] = await Promise.all([
+                        getCoursesForStudent((firestoreUser as any).id),
+                        getTestSubmissionsForStudent((firestoreUser as any).id)
+                    ]);
+                }
+                setCourses(studentCourses as any);
+                setSubmissions(subs as any);
+                const completionsEntries = await Promise.all(studentCourses.map(async c => [c.id, await getMaterialCompletionsForStudent((firestoreUser as any).id, c.id)] as const));
+                setMaterialCompletions(Object.fromEntries(completionsEntries));
+            }
             setLoginStep('landing');
         } catch (e: any) {
             setAuthError(e.message || 'Login failed');
@@ -543,6 +570,26 @@ const App: React.FC = () => {
             const firestoreUser = await getUserFromFirestore(fbUser.uid);
             if (firestoreUser) {
                 setUser(firestoreUser as any);
+                // Auto-enroll students in all existing courses (parity with Google flow)
+                if (role === 'student') {
+                    const allCourses = await getAllCoursesFromFirestore();
+                    await Promise.all(allCourses.map(c => enrollStudentInCourse((firestoreUser as any).id, c.id)));
+                    const [enrolledCourses, subs] = await Promise.all([
+                        getCoursesForStudent((firestoreUser as any).id),
+                        getTestSubmissionsForStudent((firestoreUser as any).id)
+                    ]);
+                    setCourses(enrolledCourses as any);
+                    setSubmissions(subs as any);
+                    const completionsEntries = await Promise.all(enrolledCourses.map(async c => [c.id, await getMaterialCompletionsForStudent((firestoreUser as any).id, c.id)] as const));
+                    setMaterialCompletions(Object.fromEntries(completionsEntries));
+                } else if (role === 'teacher') {
+                    const [teacherCourses, subs] = await Promise.all([
+                        getCoursesForTeacher((firestoreUser as any).id),
+                        getTestSubmissionsForTeacher((firestoreUser as any).id)
+                    ]);
+                    setCourses(teacherCourses as any);
+                    setSubmissions(subs as any);
+                }
                 setLoginStep('landing');
             }
         } catch (e: any) {

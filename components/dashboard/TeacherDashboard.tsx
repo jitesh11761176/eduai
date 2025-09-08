@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Avatar from '../common/Avatar';
 import { Course, Student, TestSubmission, Test } from '../../types';
 import Card from '../common/Card';
 import Button from '../common/Button';
@@ -143,7 +144,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ courses, students, 
                   <tr key={submission.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <img className="h-10 w-10 rounded-full" src={student.avatarUrl} alt={student.name} />
+                        <Avatar name={student.name} src={student.avatarUrl} size={40} />
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{student.name}</div>
                         </div>

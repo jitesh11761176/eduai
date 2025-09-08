@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Student } from '../../types';
 import Card from '../common/Card';
+import Avatar from '../common/Avatar';
 import Button from '../common/Button';
 import { AlertTriangle, User, TrendingDown } from 'lucide-react';
 
@@ -47,7 +48,7 @@ const AtRiskStudents: React.FC<AtRiskStudentsProps> = ({ students: allStudents }
             {atRiskStudents.map(student => (
                 <div key={student.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                     <div className='flex items-center gap-3'>
-                        <img src={student.avatarUrl} alt={student.name} className="w-8 h-8 rounded-full" />
+                                    <Avatar name={student.name} src={student.avatarUrl} size={32} />
                         <span className="font-medium text-sm">{student.name}</span>
                     </div>
                     <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${riskColor(student.riskLevel)}`}>

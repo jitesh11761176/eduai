@@ -119,6 +119,7 @@ export const getAllStudentsFromFirestore = async () => {
 // Firebase config and initialization
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, User as FirebaseUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { generateInitialAvatar } from '../utils/avatarUtils';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, where, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -155,7 +156,7 @@ export const registerWithEmail = async (name: string, email: string, password: s
     name,
     email,
     role,
-    avatarUrl: ''
+    avatarUrl: generateInitialAvatar(name)
   });
   return creds.user;
 };
