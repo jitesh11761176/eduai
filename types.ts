@@ -213,7 +213,7 @@ export interface ChatMessage {
     timestamp?: Date;
 }
 
-export type View = 'dashboard' | 'courseDetail' | 'testTaking' | 'createTest' | 'manageUsers' | 'calendar' | 'teacherCommunity' | 'discussionThread' | 'teacherAnalytics' | 'parentDashboard' | 'projectWorkspace' | 'careerCenter' | 'lessonPlanner';
+export type View = 'dashboard' | 'courseDetail' | 'testTaking' | 'createTest' | 'manageUsers' | 'calendar' | 'teacherCommunity' | 'discussionThread' | 'teacherAnalytics' | 'parentDashboard' | 'projectWorkspace' | 'careerCenter' | 'lessonPlanner' | 'competitiveExams';
 
 export interface Notification {
   id: string;

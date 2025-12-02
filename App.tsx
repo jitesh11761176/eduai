@@ -27,6 +27,8 @@ import Toast from './components/common/Toast';
 import { Lightbulb, UserCheck, Users, Shield, Settings, UserCog, Briefcase, ClipboardEdit, GitMerge, Mic, TrendingUp, Sparkles } from 'lucide-react';
 import CareerCenterPage from './components/student/CareerCenterPage';
 import LessonPlannerPage from './components/teacher/LessonPlannerPage';
+import CompetitiveExamsHome from './components/competitive/CompetitiveExamsHome';
+import CompetitiveExamsApp from './components/competitive/CompetitiveExamsApp';
 
 type UserData = { name: string; email: string; role: UserRole; courseIds?: string[] };
 type UserUpdateData = { name: string; email: string; courseIds?: string[] };
@@ -51,7 +53,7 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description:
     </div>
 );
 
-const LoginScreen: React.FC<{ onGoToLogin: () => void }> = ({ onGoToLogin }) => {
+const LoginScreen: React.FC<{ onGoToLogin: () => void; onGoToCompetitive: () => void }> = ({ onGoToLogin, onGoToCompetitive }) => {
     const quotes = [
         "The future belongs to those who believe in the beauty of their dreams.",
         "Your education is a dress rehearsal for a life that is yours to lead.",
@@ -108,21 +110,118 @@ const LoginScreen: React.FC<{ onGoToLogin: () => void }> = ({ onGoToLogin }) => 
                             </p>
                         </div>
                     </div>
-                    <div className="max-w-md mx-auto w-full">
-                         <div className="p-8 bg-white/50 backdrop-blur-xl rounded-xl shadow-2xl text-center border border-white/30">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to EduAI</h2>
-                            <p className="text-gray-600 mb-6">Your AI-Powered Learning Companion</p>
-                            <button 
-                                onClick={onGoToLogin} 
-                                className="w-full flex items-center justify-center bg-white text-gray-700 font-semibold py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 transition duration-300 shadow-sm"
-                            >
-                                <span className="ml-1 font-semibold">Go to Login</span>
-                            </button>
+                    <div className="max-w-2xl mx-auto w-full">
+                         <div className="p-8 bg-white/50 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Welcome to EduAI</h2>
+                            <p className="text-gray-600 mb-6 text-center">Your AI-Powered Learning Companion</p>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <button 
+                                    onClick={onGoToLogin} 
+                                    className="flex-1 flex items-center justify-center bg-white text-gray-700 font-semibold py-3 px-6 rounded-lg border border-gray-300 hover:bg-gray-50 transition duration-300 shadow-sm"
+                                >
+                                    <span className="font-semibold">School Login</span>
+                                </button>
+                                <button 
+                                    onClick={onGoToCompetitive} 
+                                    className="flex-1 flex items-center justify-center bg-primary-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-700 transition duration-300 shadow-sm"
+                                >
+                                    <span className="font-semibold">Competitive Exams</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
+
+        {/* Competitive Exams Section */}
+        <CompetitiveExamsHome onNavigateToLogin={onGoToCompetitive} />
+
+        {/* School Education Section (Balvatika to XII) */}
+        <section className="py-20 bg-gradient-to-br from-emerald-50 via-white to-teal-50 border-y border-emerald-100">
+            <div className="container mx-auto px-4">
+                <div className="text-center mb-12">
+                    <h2 className="text-4xl font-bold tracking-tight sm:text-5xl text-slate-900 mb-4">
+                        School Education Platform
+                    </h2>
+                    <p className="mt-4 max-w-3xl mx-auto text-xl text-slate-600">
+                        Complete AI-powered learning solution for Classes Balvatika to XII. 
+                        Empowering students, teachers, and parents with personalized education.
+                    </p>
+                </div>
+
+                {/* Grade Levels */}
+                <div className="flex flex-wrap justify-center gap-4 mb-12">
+                    <div className="bg-white rounded-xl px-6 py-3 shadow-md hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-emerald-300">
+                        <span className="text-lg font-bold text-slate-900">Balvatika</span>
+                    </div>
+                    <div className="bg-white rounded-xl px-6 py-3 shadow-md hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-emerald-300">
+                        <span className="text-lg font-bold text-slate-900">Class I - V</span>
+                    </div>
+                    <div className="bg-white rounded-xl px-6 py-3 shadow-md hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-emerald-300">
+                        <span className="text-lg font-bold text-slate-900">Class VI - VIII</span>
+                    </div>
+                    <div className="bg-white rounded-xl px-6 py-3 shadow-md hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-emerald-300">
+                        <span className="text-lg font-bold text-slate-900">Class IX - X</span>
+                    </div>
+                    <div className="bg-white rounded-xl px-6 py-3 shadow-md hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-emerald-300">
+                        <span className="text-lg font-bold text-slate-900">Class XI - XII</span>
+                    </div>
+                </div>
+
+                {/* Features Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+                    <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-lg mb-4">
+                            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Complete Curriculum</h3>
+                        <p className="text-slate-600 text-sm">
+                            Full CBSE/NCERT syllabus coverage with interactive lessons and assessments
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-center w-12 h-12 bg-teal-100 rounded-lg mb-4">
+                            <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Teacher Tools</h3>
+                        <p className="text-slate-600 text-sm">
+                            AI lesson planner, automated grading, and student progress tracking
+                        </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-center w-12 h-12 bg-cyan-100 rounded-lg mb-4">
+                            <svg className="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Parent Dashboard</h3>
+                        <p className="text-slate-600 text-sm">
+                            Real-time insights into your child's learning progress and achievements
+                        </p>
+                    </div>
+                </div>
+
+                {/* CTA Button */}
+                <div className="flex justify-center">
+                    <button
+                        onClick={onGoToLogin}
+                        className="inline-flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-lg px-8 py-4 rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        Access School Platform
+                    </button>
+                </div>
+            </div>
+        </section>
 
         {/* Features Section */}
         <section className="py-20 bg-white/40 backdrop-blur-xl border-y border-white/20">
@@ -194,7 +293,7 @@ const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({ onSelectRole,
         <div className="p-8 bg-white/70 backdrop-blur-lg rounded-xl shadow-lg text-center max-w-lg w-full border border-white/50">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Choose Your Role</h2>
             <p className="text-gray-600 mb-6">Select how you'd like to sign in for this session.</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                  <button onClick={() => onSelectRole('student')} className="p-6 bg-primary-100 text-primary-800 font-bold rounded-lg hover:bg-primary-200 transition duration-300 shadow-sm border border-primary-200 text-center">
                     <Users size={24} className="mx-auto mb-2" />
                     Student
@@ -203,17 +302,9 @@ const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({ onSelectRole,
                     <UserCheck size={24} className="mx-auto mb-2" />
                     Teacher
                 </button>
-                <button onClick={() => onSelectRole('parent')} className="p-6 bg-warning-100 text-warning-800 font-bold rounded-lg hover:bg-warning-200 transition duration-300 shadow-sm border border-warning-200 text-center">
-                    <Shield size={24} className="mx-auto mb-2" />
-                    Parent
-                </button>
                  <button onClick={() => onSelectRole('principal')} className="p-6 bg-purple-100 text-purple-800 font-bold rounded-lg hover:bg-purple-200 transition duration-300 shadow-sm border border-purple-200 text-center">
                     <UserCog size={24} className="mx-auto mb-2" />
                     Principal
-                </button>
-                <button onClick={() => onSelectRole('admin')} className="p-6 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300 transition duration-300 shadow-sm border border-gray-300 text-center col-span-2 md:col-span-1">
-                    <Settings size={24} className="mx-auto mb-2" />
-                    Admin
                 </button>
             </div>
             <button onClick={onBack} className="mt-6 text-sm text-gray-500 hover:underline">
@@ -259,9 +350,7 @@ const LoginPage: React.FC<{
                         <select value={role} onChange={e=>setRole(e.target.value as UserRole)} className="w-full border rounded px-3 py-2">
                             <option value="student">Student</option>
                             <option value="teacher">Teacher</option>
-                            <option value="parent">Parent</option>
                             <option value="principal">Principal</option>
-                            <option value="admin">Admin</option>
                         </select>
                     )}
                     <button disabled={pending} type="submit" className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700 disabled:opacity-50">
@@ -311,6 +400,12 @@ const App: React.FC = () => {
 
     // Persistent login: listen for Firebase Auth state changes
     useEffect(() => {
+        // Only set up auth listener if Firebase is configured
+        if (!auth) {
+            console.warn('Firebase auth not configured - skipping auth state listener');
+            return;
+        }
+        
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
                 // Try to get user from Firestore
@@ -843,9 +938,17 @@ const App: React.FC = () => {
     const handleViewFeedback = (submissionId: string) => setViewingSubmissionId(submissionId);
     const handleCloseFeedbackModal = () => setViewingSubmissionId(null);
 
+    // Competitive Exams module - accessible without main app login
+    if (view === 'competitiveExams') {
+        return <CompetitiveExamsApp />;
+    }
+
     if (!user) {
         if (loginStep === 'landing') {
-            return <LoginScreen onGoToLogin={() => setLoginStep('loginPage')} />;
+            return <LoginScreen 
+                onGoToLogin={() => setLoginStep('loginPage')} 
+                onGoToCompetitive={() => setView('competitiveExams')}
+            />;
         }
         if (loginStep === 'loginPage') {
             return <LoginPage onGoogle={handleGoogleSignIn} onBack={() => setLoginStep('landing')} onEmailLogin={handleEmailLogin} onEmailRegister={handleEmailRegister} error={authError} pending={authPending} />;
@@ -871,6 +974,8 @@ const App: React.FC = () => {
         }
         
         switch (view) {
+            case 'competitiveExams':
+                return <CompetitiveExamsApp />;
             case 'careerCenter':
                 if (user.role === 'student') {
                     return <CareerCenterPage />;

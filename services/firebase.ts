@@ -123,29 +123,48 @@ import { generateInitialAvatar } from '../utils/avatarUtils';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, where, deleteDoc } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:0000000000000000000000",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
 };
 
+// Initialize Firebase only if we have a valid API key
+let app: any;
+let auth: any;
+let db: any;
+let provider: any;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  provider = new GoogleAuthProvider();
+} catch (error) {
+  console.warn('Firebase initialization skipped - using demo mode. Configure .env file for full functionality.');
+  // Create mock objects to prevent errors
+  auth = null;
+  db = null;
+  provider = null;
+}
 
 
 export const signInWithGoogle = async () => {
+  if (!auth || !provider) {
+    throw new Error('Firebase not configured. Please set up your Firebase credentials in .env file.');
+  }
   const result = await signInWithPopup(auth, provider);
   return result.user;
 };
 
 // Email/password registration
 export const registerWithEmail = async (name: string, email: string, password: string, role: string) => {
+  if (!auth || !db) {
+    throw new Error('Firebase not configured. Please set up your Firebase credentials in .env file.');
+  }
   const creds = await createUserWithEmailAndPassword(auth, email, password);
   if (auth.currentUser) {
     try { await updateProfile(auth.currentUser, { displayName: name }); } catch {}
@@ -163,16 +182,27 @@ export const registerWithEmail = async (name: string, email: string, password: s
 
 // Email/password sign in
 export const signInWithEmail = async (email: string, password: string) => {
+  if (!auth) {
+    throw new Error('Firebase not configured. Please set up your Firebase credentials in .env file.');
+  }
   const creds = await signInWithEmailAndPassword(auth, email, password);
   return creds.user;
 };
 
 // Firestore helpers
 export const saveUserToFirestore = async (user: { id: string; name: string; email: string; role: string; avatarUrl: string }) => {
+  if (!db) {
+    console.warn('Firebase not configured - skipping user save');
+    return;
+  }
   await setDoc(doc(db, "users", user.id), user, { merge: true });
 };
 
 export const getUserFromFirestore = async (userId: string) => {
+  if (!db) {
+    console.warn('Firebase not configured - returning null');
+    return null;
+  }
   const userDoc = await getDoc(doc(db, "users", userId));
   return userDoc.exists() ? userDoc.data() : null;
 };
