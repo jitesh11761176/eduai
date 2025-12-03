@@ -10,7 +10,20 @@ interface CompetitiveAdminDashboardProps {
 const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ navigate }) => {
   const { isAdmin, testResults } = useCompetitiveUser();
   const [activeTab, setActiveTab] = useState<"overview" | "exams" | "users">("overview");
-  const [exams, setExams] = useState<Exam[]>([...competitiveExams]);
+  
+  // Load exams from localStorage or use default data
+  const [exams, setExams] = useState<Exam[]>(() => {
+    const stored = localStorage.getItem("competitive_exams_data");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error("Failed to parse stored exams:", e);
+      }
+    }
+    return [...competitiveExams];
+  });
+  
   const [showAddExamModal, setShowAddExamModal] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [showAddTestModal, setShowAddTestModal] = useState(false);
@@ -29,6 +42,11 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
 
   // Get user data from localStorage
   const [allUsers, setAllUsers] = useState<any[]>([]);
+
+  // Save exams to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("competitive_exams_data", JSON.stringify(exams));
+  }, [exams]);
 
   useEffect(() => {
     // Load all competitive users from localStorage
@@ -194,6 +212,38 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
     setSelectedExamId("");
     setSelectedCategoryId("");
     alert("Test added successfully!");
+  };
+
+  const handleDeleteUser = (userEmail: string) => {
+    if (confirm(`Are you sure you want to delete all data for ${userEmail}? This action cannot be undone.`)) {
+      // Find and remove user from localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("competitive_user")) {
+          try {
+            const user = JSON.parse(localStorage.getItem(key) || "");
+            if (user.email === userEmail) {
+              localStorage.removeItem(key);
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+      
+      // Refresh user list
+      const users: any[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("competitive_user")) {
+          try {
+            const user = JSON.parse(localStorage.getItem(key) || "");
+            users.push(user);
+          } catch (e) {}
+        }
+      }
+      setAllUsers(users);
+      alert("User data deleted successfully!");
+    }
   };
 
   const totalTests = exams.reduce(
@@ -420,6 +470,7 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Email</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Selected Exams</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Total Attempts</th>
+                    <th className="text-right px-6 py-4 text-sm font-semibold text-slate-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -435,6 +486,14 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                           {user.selectedExams?.join(", ") || "None"}
                         </td>
                         <td className="px-6 py-4 text-slate-900 font-semibold">{userAttempts}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteUser(user.email)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+                          >
+                            Delete User
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
+import { signInWithGoogle } from "../../services/firebase";
 
 interface CompetitiveLoginProps {
   navigate: (view: string, context?: any) => void;
@@ -10,17 +11,36 @@ const CompetitiveLogin: React.FC<CompetitiveLoginProps> = ({ navigate }) => {
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleGoogleLogin = () => {
-    // Simulate Google login (frontend-only for now)
-    const mockUser = {
-      id: `user_${Date.now()}`,
-      name: "Demo User",
-      email: "demo@gmail.com",
-    };
-    
-    login(mockUser);
-    navigate("onboarding");
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const firebaseUser = await signInWithGoogle();
+      
+      const user = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || "Google User",
+        email: firebaseUser.email || "",
+      };
+      
+      login(user);
+      
+      // Check if admin (case-insensitive)
+      if (user.email.toLowerCase() === "jiteshshahpgtcs2@gmail.com") {
+        navigate("admin");
+      } else {
+        navigate("onboarding");
+      }
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      setError(err.message || "Failed to sign in with Google. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmailLogin = (e: React.FormEvent) => {
@@ -56,12 +76,20 @@ const CompetitiveLogin: React.FC<CompetitiveLoginProps> = ({ navigate }) => {
             <p className="text-slate-600">Sign in to start your preparation journey</p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
           {/* Login Button */}
           {!showEmailInput ? (
             <>
               <button
                 onClick={handleGoogleLogin}
-                className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-6 h-6" viewBox="0 0 24 24">
                   <path
@@ -81,7 +109,7 @@ const CompetitiveLogin: React.FC<CompetitiveLoginProps> = ({ navigate }) => {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>{loading ? "Signing in..." : "Continue with Google"}</span>
               </button>
 
               <div className="relative my-6">
@@ -110,8 +138,8 @@ const CompetitiveLogin: React.FC<CompetitiveLoginProps> = ({ navigate }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <div className="text-xs text-purple-700">
-                    <strong className="block mb-1">Admin Access</strong>
-                    <span>Use "Sign in with Email" with <code className="bg-purple-100 px-1 rounded">jiteshshahpgtcs2@gmail.com</code> to access admin dashboard</span>
+                    <strong className="block mb-1">🔒 Secure Admin Access</strong>
+                    <span>Use <strong>Google Sign-in</strong> with <code className="bg-purple-100 px-1 rounded font-semibold">jiteshshahpgtcs2@gmail.com</code> for authenticated admin dashboard access</span>
                   </div>
                 </div>
               </div>

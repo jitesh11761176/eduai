@@ -563,6 +563,22 @@ const App: React.FC = () => {
         try {
             const firebaseUser: FirebaseUser = await signInWithGoogle();
             if (!firebaseUser) return;
+            
+            // Check if this is the admin email
+            if (firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+                // Admin user - set up with special admin role
+                const adminUser = {
+                    id: firebaseUser.uid,
+                    name: firebaseUser.displayName || firebaseUser.email || 'Admin',
+                    email: firebaseUser.email || '',
+                    role: 'admin' as UserRole,
+                    avatarUrl: firebaseUser.photoURL || (await import('./utils/avatarUtils')).generateInitialAvatar(firebaseUser.displayName || 'Admin')
+                };
+                setUser(adminUser);
+                setLoginStep('landing');
+                return;
+            }
+            
             // Try to get user from Firestore
             let firestoreUser = await getUserFromFirestore(firebaseUser.uid);
             if (!firestoreUser) {
