@@ -994,6 +994,9 @@ const App: React.FC = () => {
                         navigate(targetView, context);
                     }
                 }}
+                courses={courses}
+                students={students}
+                teachers={teachers}
             />;
         }
 
