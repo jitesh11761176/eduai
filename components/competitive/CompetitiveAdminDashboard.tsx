@@ -13,7 +13,19 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   const [exams, setExams] = useState<Exam[]>([...competitiveExams]);
   const [showAddExamModal, setShowAddExamModal] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showAddTestModal, setShowAddTestModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string>("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+
+  // Form states
+  const [examForm, setExamForm] = useState({ name: "", fullName: "", description: "", icon: "📚" });
+  const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
+  const [testForm, setTestForm] = useState({
+    title: "",
+    difficulty: "Easy" as "Easy" | "Medium" | "Hard",
+    durationMinutes: 30,
+    numQuestions: 20,
+  });
 
   // Get user data from localStorage
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -53,9 +65,27 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   const handleDeleteExam = (examId: string) => {
     if (confirm("Are you sure you want to delete this exam?")) {
       setExams(exams.filter((e) => e.id !== examId));
-      // In a real app, this would update the backend
       alert("Exam deleted successfully!");
     }
+  };
+
+  const handleAddExam = () => {
+    if (!examForm.name || !examForm.fullName) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    const newExam: Exam = {
+      id: examForm.name.toLowerCase().replace(/\s+/g, "-"),
+      name: examForm.name,
+      fullName: examForm.fullName,
+      description: examForm.description,
+      icon: examForm.icon,
+      categories: [],
+    };
+    setExams([...exams, newExam]);
+    setExamForm({ name: "", fullName: "", description: "", icon: "📚" });
+    setShowAddExamModal(false);
+    alert("Exam added successfully!");
   };
 
   const handleDeleteCategory = (examId: string, categoryId: string) => {
@@ -73,6 +103,34 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
       );
       alert("Category deleted successfully!");
     }
+  };
+
+  const handleAddCategory = () => {
+    if (!categoryForm.name || !selectedExamId) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    const newCategory = {
+      id: `cat-${Date.now()}`,
+      name: categoryForm.name,
+      description: categoryForm.description,
+      tests: [],
+    };
+    setExams(
+      exams.map((exam) => {
+        if (exam.id === selectedExamId) {
+          return {
+            ...exam,
+            categories: [...exam.categories, newCategory],
+          };
+        }
+        return exam;
+      })
+    );
+    setCategoryForm({ name: "", description: "" });
+    setShowAddCategoryModal(false);
+    setSelectedExamId("");
+    alert("Category added successfully!");
   };
 
   const handleDeleteTest = (examId: string, categoryId: string, testId: string) => {
@@ -98,6 +156,44 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
       );
       alert("Test deleted successfully!");
     }
+  };
+
+  const handleAddTest = () => {
+    if (!testForm.title || !selectedExamId || !selectedCategoryId) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    const newTest = {
+      id: `test-${Date.now()}`,
+      title: testForm.title,
+      difficulty: testForm.difficulty,
+      durationMinutes: testForm.durationMinutes,
+      numQuestions: testForm.numQuestions,
+    };
+    setExams(
+      exams.map((exam) => {
+        if (exam.id === selectedExamId) {
+          return {
+            ...exam,
+            categories: exam.categories.map((cat) => {
+              if (cat.id === selectedCategoryId) {
+                return {
+                  ...cat,
+                  tests: [...cat.tests, newTest],
+                };
+              }
+              return cat;
+            }),
+          };
+        }
+        return exam;
+      })
+    );
+    setTestForm({ title: "", difficulty: "Easy", durationMinutes: 30, numQuestions: 20 });
+    setShowAddTestModal(false);
+    setSelectedExamId("");
+    setSelectedCategoryId("");
+    alert("Test added successfully!");
   };
 
   const totalTests = exams.reduce(
@@ -263,12 +359,24 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                             <h4 className="font-semibold text-slate-900">{category.name}</h4>
                             <p className="text-sm text-slate-600">{category.description}</p>
                           </div>
-                          <button
-                            onClick={() => handleDeleteCategory(exam.id, category.id)}
-                            className="text-red-600 hover:text-red-700 font-medium text-sm"
-                          >
-                            Delete Category
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedExamId(exam.id);
+                                setSelectedCategoryId(category.id);
+                                setShowAddTestModal(true);
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1 rounded text-sm"
+                            >
+                              + Add Test
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(exam.id, category.id)}
+                              className="text-red-600 hover:text-red-700 font-medium text-sm"
+                            >
+                              Delete Category
+                            </button>
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -346,36 +454,213 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
 
       {/* Add Exam Modal */}
       {showAddExamModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 max-w-md mx-4 w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-slate-900 mb-4">Add New Exam</h3>
-            <p className="text-slate-600 mb-6">
-              This is a demo modal. In production, this would have a form to add new exams.
-            </p>
-            <button
-              onClick={() => setShowAddExamModal(false)}
-              className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold py-3 rounded-lg"
-            >
-              Close
-            </button>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Exam Name (Short) *
+                </label>
+                <input
+                  type="text"
+                  value={examForm.name}
+                  onChange={(e) => setExamForm({ ...examForm, name: e.target.value })}
+                  placeholder="e.g., UPSC"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={examForm.fullName}
+                  onChange={(e) => setExamForm({ ...examForm, fullName: e.target.value })}
+                  placeholder="e.g., Union Public Service Commission"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={examForm.description}
+                  onChange={(e) => setExamForm({ ...examForm, description: e.target.value })}
+                  placeholder="Brief description of the exam"
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Icon (Emoji)
+                </label>
+                <input
+                  type="text"
+                  value={examForm.icon}
+                  onChange={(e) => setExamForm({ ...examForm, icon: e.target.value })}
+                  placeholder="📚"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleAddExam}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg"
+              >
+                Add Exam
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddExamModal(false);
+                  setExamForm({ name: "", fullName: "", description: "", icon: "📚" });
+                }}
+                className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold py-3 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Add Category Modal */}
       {showAddCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 max-w-md mx-4 w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full">
             <h3 className="text-xl font-bold text-slate-900 mb-4">Add New Category</h3>
-            <p className="text-slate-600 mb-6">
-              This is a demo modal. In production, this would have a form to add new categories.
-            </p>
-            <button
-              onClick={() => setShowAddCategoryModal(false)}
-              className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold py-3 rounded-lg"
-            >
-              Close
-            </button>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                  placeholder="e.g., General Intelligence & Reasoning"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                  placeholder="Brief description of the category"
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleAddCategory}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
+              >
+                Add Category
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddCategoryModal(false);
+                  setCategoryForm({ name: "", description: "" });
+                  setSelectedExamId("");
+                }}
+                className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold py-3 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Test Modal */}
+      {showAddTestModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Add New Test</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Test Title *
+                </label>
+                <input
+                  type="text"
+                  value={testForm.title}
+                  onChange={(e) => setTestForm({ ...testForm, title: e.target.value })}
+                  placeholder="e.g., Reasoning Basics - Test 1"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Difficulty *
+                </label>
+                <select
+                  value={testForm.difficulty}
+                  onChange={(e) =>
+                    setTestForm({ ...testForm, difficulty: e.target.value as "Easy" | "Medium" | "Hard" })
+                  }
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Duration (minutes) *
+                </label>
+                <input
+                  type="number"
+                  value={testForm.durationMinutes}
+                  onChange={(e) => setTestForm({ ...testForm, durationMinutes: parseInt(e.target.value) })}
+                  min="5"
+                  max="180"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Number of Questions *
+                </label>
+                <input
+                  type="number"
+                  value={testForm.numQuestions}
+                  onChange={(e) => setTestForm({ ...testForm, numQuestions: parseInt(e.target.value) })}
+                  min="5"
+                  max="200"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleAddTest}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg"
+              >
+                Add Test
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddTestModal(false);
+                  setTestForm({ title: "", difficulty: "Easy", durationMinutes: 30, numQuestions: 20 });
+                  setSelectedExamId("");
+                  setSelectedCategoryId("");
+                }}
+                className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold py-3 rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
