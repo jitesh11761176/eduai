@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
-import { competitiveExams } from "../../data/competitive";
+import { getCompetitiveExams } from "../../data/competitive";
 import { Exam } from "../../types/competitive";
 
 interface CompetitiveAdminDashboardProps {
@@ -13,15 +13,7 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   
   // Load exams from localStorage or use default data
   const [exams, setExams] = useState<Exam[]>(() => {
-    const stored = localStorage.getItem("competitive_exams_data");
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error("Failed to parse stored exams:", e);
-      }
-    }
-    return [...competitiveExams];
+    return getCompetitiveExams();
   });
   
   const [showAddExamModal, setShowAddExamModal] = useState(false);

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
-import { competitiveExams } from "../../data/competitive";
+import { getCompetitiveExams } from "../../data/competitive";
 
 interface CompetitiveOnboardingProps {
   navigate: (view: string, context?: any) => void;
@@ -9,6 +9,8 @@ interface CompetitiveOnboardingProps {
 const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate }) => {
   const { user, updateSelectedExams, isAdmin } = useCompetitiveUser();
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
+  
+  const competitiveExams = getCompetitiveExams();
 
   // If admin, redirect directly to admin dashboard
   React.useEffect(() => {

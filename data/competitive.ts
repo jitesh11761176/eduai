@@ -1,5 +1,19 @@
 import { Exam, Test } from "../types/competitive";
 
+// Get exams from localStorage or return default data
+export const getCompetitiveExams = (): Exam[] => {
+  const stored = localStorage.getItem("competitive_exams_data");
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse stored exams:", e);
+    }
+  }
+  // Return default data if nothing in localStorage
+  return competitiveExams;
+};
+
 // Mock data representing admin-created competitive exams content
 export const competitiveExams: Exam[] = [
   {

@@ -1,10 +1,11 @@
 import { TestResult, GuidanceResult, TestSummary, PerformanceSnapshot } from "../types/competitive";
-import { competitiveExams } from "../data/competitive";
+import { getCompetitiveExams } from "../data/competitive";
 
 /**
  * Generate personalized guidance based on test results
  */
 export const generateGuidanceFromResult = (result: TestResult): GuidanceResult => {
+  const competitiveExams = getCompetitiveExams();
   const textTips: string[] = [];
   const recommendedTests: TestSummary[] = [];
 
@@ -181,6 +182,8 @@ export const getNextRecommendedTest = (
 ): { exam: string; category: string; test: TestSummary } | null => {
   if (selectedExams.length === 0) return null;
 
+  const competitiveExams = getCompetitiveExams();
+  
   // Get all exams user selected
   const userExams = competitiveExams.filter((e) => selectedExams.includes(e.id));
 

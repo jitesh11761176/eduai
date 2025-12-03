@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
-import { competitiveExams } from "../../data/competitive";
+import { getCompetitiveExams } from "../../data/competitive";
 import { generatePerformanceSnapshot, getGuidanceFromPerformance, getNextRecommendedTest } from "../../utils/competitiveGuidance";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -18,6 +18,8 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
   }, [isAuthenticated, navigate]);
 
   if (!user) return null;
+
+  const competitiveExams = getCompetitiveExams();
 
   // Debug: Log admin status
   console.log("=== DASHBOARD DEBUG ===");
