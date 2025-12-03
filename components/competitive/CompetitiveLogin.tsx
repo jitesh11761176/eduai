@@ -34,7 +34,13 @@ const CompetitiveLogin: React.FC<CompetitiveLoginProps> = ({ navigate }) => {
     };
     
     login(user);
-    navigate("onboarding");
+    
+    // Check if admin email (case-insensitive)
+    if (email.toLowerCase() === "jiteshshahpgtcs2@gmail.com") {
+      navigate("admin");
+    } else {
+      navigate("onboarding");
+    }
   };
 
   return (

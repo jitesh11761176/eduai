@@ -7,8 +7,15 @@ interface CompetitiveOnboardingProps {
 }
 
 const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate }) => {
-  const { user, updateSelectedExams } = useCompetitiveUser();
+  const { user, updateSelectedExams, isAdmin } = useCompetitiveUser();
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
+
+  // If admin, redirect directly to admin dashboard
+  React.useEffect(() => {
+    if (isAdmin) {
+      navigate("admin");
+    }
+  }, [isAdmin, navigate]);
 
   const handleExamToggle = (examId: string) => {
     setSelectedExams((prev) =>
@@ -22,6 +29,11 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
       navigate("dashboard");
     }
   };
+
+  // Don't show onboarding to admin
+  if (isAdmin) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4">
