@@ -19,6 +19,13 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
 
   if (!user) return null;
 
+  // Debug: Log admin status
+  console.log("=== DASHBOARD DEBUG ===");
+  console.log("User:", user);
+  console.log("User Email:", user.email);
+  console.log("Is Admin:", isAdmin);
+  console.log("====================");
+
   const performance = generatePerformanceSnapshot(testResults, user.selectedExams);
   const guidanceTips = getGuidanceFromPerformance(testResults);
   const nextTest = getNextRecommendedTest(testResults, user.selectedExams);
@@ -38,15 +45,25 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
               <p className="text-slate-600 mt-1">
                 You're preparing for: {user.selectedExams.map(id => competitiveExams.find(e => e.id === id)?.name).join(", ")}
               </p>
+              {/* DEBUG: Show admin status */}
+              <div className="mt-2 text-xs">
+                <span className={`px-2 py-1 rounded ${isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                  Email: {user.email} | Admin: {isAdmin ? 'YES ✓' : 'NO ✗'}
+                </span>
+              </div>
             </div>
             <div className="flex gap-3">
-              {isAdmin && (
+              {isAdmin ? (
                 <button
                   onClick={() => navigate("admin")}
                   className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
                 >
                   Admin Dashboard
                 </button>
+              ) : (
+                <div className="px-4 py-2 text-sm text-gray-500 italic">
+                  (Admin button hidden - not admin)
+                </div>
               )}
               <button
                 onClick={() => navigate("onboarding")}
