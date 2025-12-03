@@ -29,6 +29,10 @@ import CareerCenterPage from './components/student/CareerCenterPage';
 import LessonPlannerPage from './components/teacher/LessonPlannerPage';
 import CompetitiveExamsHome from './components/competitive/CompetitiveExamsHome';
 import CompetitiveExamsApp from './components/competitive/CompetitiveExamsApp';
+import UnifiedAdminDashboard from './components/admin/UnifiedAdminDashboard';
+
+// Admin email constant - matches competitive section
+const ADMIN_EMAIL = 'jiteshshahpgtcs2@gmail.com';
 
 type UserData = { name: string; email: string; role: UserRole; courseIds?: string[] };
 type UserUpdateData = { name: string; email: string; courseIds?: string[] };
@@ -339,6 +343,20 @@ const LoginPage: React.FC<{
                 <button onClick={onBack} className="text-sm text-gray-500 hover:underline mb-4">← Back</button>
                 <h2 className="text-2xl font-bold mb-1 text-gray-800">{isRegister ? 'Create Account' : 'Login'}</h2>
                 <p className="text-gray-500 mb-6">Access your EduAI dashboard</p>
+                
+                {/* Admin Info Badge */}
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="text-sm">
+                            <p className="font-semibold text-purple-900 mb-1">Admin Access</p>
+                            <p className="text-purple-700">Login with <span className="font-mono bg-purple-100 px-1 rounded">jiteshshahpgtcs2@gmail.com</span> for full admin control over both School and Competitive Exams sections.</p>
+                        </div>
+                    </div>
+                </div>
+
                 {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
                 <form onSubmit={submit} className="space-y-4">
                     {isRegister && (
@@ -694,6 +712,9 @@ const App: React.FC = () => {
 
     const authContextValue = useMemo(() => ({ user, logout: handleLogout }), [user, handleLogout]);
     
+    // Check if current user is admin
+    const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    
     const selectedCourse = useMemo(() => 
         (view === 'courseDetail' || view === 'discussionThread' || view === 'projectWorkspace') && viewContext.courseId 
             ? courses.find(c => c.id === viewContext.courseId) || null 
@@ -961,6 +982,21 @@ const App: React.FC = () => {
     if (isLoading) return <LoadingSpinner />;
 
     const renderContent = () => {
+        // Admin check - if admin, show unified admin dashboard
+        if (isAdmin && view === 'dashboard') {
+            return <UnifiedAdminDashboard 
+                navigate={navigate}
+                competitiveNavigate={(targetView: string, context?: any) => {
+                    // For competitive admin navigation, we need to handle it specially
+                    if (targetView === 'competitive-admin') {
+                        setView('competitiveExams');
+                    } else {
+                        navigate(targetView, context);
+                    }
+                }}
+            />;
+        }
+
         if (viewingSubmissionId && user?.role === 'student') {
             const submission = submissions.find(s => s.id === viewingSubmissionId);
             const course = submission ? courses.find(c => c.id === submission.courseId) : undefined;
