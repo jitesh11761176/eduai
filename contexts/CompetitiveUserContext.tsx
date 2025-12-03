@@ -99,12 +99,24 @@ export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = 
     return testAttempts[testAttempts.length - 1].scorePercent;
   };
 
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Debug log
+  useEffect(() => {
+    if (user) {
+      console.log("Current user:", user);
+      console.log("User email:", user.email);
+      console.log("Admin email:", ADMIN_EMAIL);
+      console.log("Is admin:", isAdmin);
+    }
+  }, [user, isAdmin]);
+
   return (
     <CompetitiveUserContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
-        isAdmin: user?.email === ADMIN_EMAIL,
+        isAdmin,
         login,
         logout,
         updateSelectedExams,
