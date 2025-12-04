@@ -36,10 +36,13 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
 
   // Get user data from localStorage
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Save exams to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("competitive_exams_data", JSON.stringify(exams));
+    setLastSaved(new Date());
+    console.log("📝 Admin saved data to localStorage:", exams);
   }, [exams]);
 
   useEffect(() => {
@@ -292,9 +295,32 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   );
 
   const totalAttempts = testResults.length;
+  
+  const handleRefreshData = () => {
+    const freshData = getCompetitiveExams();
+    setExams(freshData);
+    alert("Data refreshed from localStorage!");
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Data Sync Indicator */}
+      {lastSaved && (
+        <div className="bg-green-50 border-b border-green-200 py-2">
+          <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
+            <span className="text-sm text-green-700">
+              ✓ Changes auto-saved at {lastSaved.toLocaleTimeString()}
+            </span>
+            <button
+              onClick={handleRefreshData}
+              className="text-sm text-green-700 hover:text-green-800 font-medium underline"
+            >
+              🔄 Refresh Data
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 py-6">

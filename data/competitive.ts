@@ -5,12 +5,15 @@ export const getCompetitiveExams = (): Exam[] => {
   const stored = localStorage.getItem("competitive_exams_data");
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      console.log("✅ getCompetitiveExams: Loaded from localStorage", parsed);
+      return parsed;
     } catch (e) {
-      console.error("Failed to parse stored exams:", e);
+      console.error("❌ Failed to parse stored exams:", e);
     }
   }
   // Return default data if nothing in localStorage
+  console.log("⚠️ getCompetitiveExams: No data in localStorage, using defaults");
   return competitiveExams;
 };
 

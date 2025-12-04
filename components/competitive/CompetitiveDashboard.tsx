@@ -22,6 +22,8 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
   // Force refresh data on component mount to ensure latest exams are shown
   useEffect(() => {
     const latestExams = getCompetitiveExams();
+    console.log("👤 Dashboard loaded exams from localStorage:", latestExams);
+    console.log("📊 Total exams loaded:", latestExams.length);
     setCompetitiveExams(latestExams);
   }, []);
 
