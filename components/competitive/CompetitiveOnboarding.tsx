@@ -33,7 +33,7 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
   };
 
   // If admin, redirect directly to admin dashboard
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAdmin) {
       navigate("admin");
     }
