@@ -9,8 +9,28 @@ interface CompetitiveOnboardingProps {
 const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate }) => {
   const { user, updateSelectedExams, isAdmin } = useCompetitiveUser();
   const [selectedExams, setSelectedExams] = useState<string[]>([]);
+  const [competitiveExams, setCompetitiveExams] = useState(() => getCompetitiveExams());
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   
-  const competitiveExams = getCompetitiveExams();
+  // Check for data updates every 3 seconds
+  useEffect(() => {
+    const checkForUpdates = () => {
+      const currentData = JSON.stringify(competitiveExams);
+      const newData = JSON.stringify(getCompetitiveExams());
+      
+      if (currentData !== newData) {
+        setShowUpdateNotification(true);
+      }
+    };
+
+    const interval = setInterval(checkForUpdates, 3000);
+    return () => clearInterval(interval);
+  }, [competitiveExams]);
+
+  const handleRefreshData = () => {
+    setCompetitiveExams(getCompetitiveExams());
+    setShowUpdateNotification(false);
+  };
 
   // If admin, redirect directly to admin dashboard
   React.useEffect(() => {
@@ -39,6 +59,27 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4">
+      {/* Update Notification Banner */}
+      {showUpdateNotification && (
+        <div className="bg-green-600 text-white py-3 px-4 shadow-lg fixed top-0 left-0 right-0 z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎉</span>
+              <div>
+                <p className="font-semibold">New Exams Added!</p>
+                <p className="text-sm text-green-100">Admin has added new exams and categories</p>
+              </div>
+            </div>
+            <button
+              onClick={handleRefreshData}
+              className="bg-white text-green-600 font-semibold px-6 py-2 rounded-lg hover:bg-green-50 transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

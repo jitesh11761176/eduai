@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import CompetitiveAdminDashboard from "../competitive/CompetitiveAdminDashboard";
+import CreateCourseModal from "../course/CreateCourseModal";
 
 interface UnifiedAdminDashboardProps {
   navigate: (view: string, context?: any) => void;
@@ -7,6 +8,11 @@ interface UnifiedAdminDashboardProps {
   courses?: any[];
   students?: any[];
   teachers?: any[];
+  onAddCourse?: (courseData: any) => void;
+  onDeleteCourse?: (courseId: string) => void;
+  onAddUser?: (userData: any) => void;
+  onUpdateUser?: (userId: string, role: string, userData: any) => void;
+  onDeleteUser?: (userId: string, role: string) => void;
 }
 
 const UnifiedAdminDashboard: React.FC<UnifiedAdminDashboardProps> = ({ 
@@ -14,7 +20,12 @@ const UnifiedAdminDashboard: React.FC<UnifiedAdminDashboardProps> = ({
   competitiveNavigate,
   courses = [],
   students = [],
-  teachers = []
+  teachers = [],
+  onAddCourse,
+  onDeleteCourse,
+  onAddUser,
+  onUpdateUser,
+  onDeleteUser
 }) => {
   const [activeSection, setActiveSection] = useState<"school" | "competitive">("school");
 
@@ -83,6 +94,11 @@ const UnifiedAdminDashboard: React.FC<UnifiedAdminDashboardProps> = ({
             courses={courses}
             students={students}
             teachers={teachers}
+            onAddCourse={onAddCourse}
+            onDeleteCourse={onDeleteCourse}
+            onAddUser={onAddUser}
+            onUpdateUser={onUpdateUser}
+            onDeleteUser={onDeleteUser}
           />
         ) : (
           <div className="bg-slate-50">
@@ -100,8 +116,15 @@ const SchoolAdminSection: React.FC<{
   courses: any[];
   students: any[];
   teachers: any[];
-}> = ({ navigate, courses, students, teachers }) => {
+  onAddCourse?: (courseData: any) => void;
+  onDeleteCourse?: (courseId: string) => void;
+  onAddUser?: (userData: any) => void;
+  onUpdateUser?: (userId: string, role: string, userData: any) => void;
+  onDeleteUser?: (userId: string, role: string) => void;
+}> = ({ navigate, courses, students, teachers, onAddCourse, onDeleteCourse, onAddUser, onUpdateUser, onDeleteUser }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "courses" | "users" | "tests">("overview");
+  const [showAddCourseModal, setShowAddCourseModal] = useState(false);
+  const [courseForm, setCourseForm] = useState({ title: "", description: "", subject: "", grade: "" });
 
   // Count total tests across all courses
   const totalTests = courses.reduce((acc, course) => {
@@ -239,17 +262,54 @@ const SchoolAdminSection: React.FC<{
           )}
 
           {activeTab === "courses" && (
-            <div className="text-center py-12">
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Course Management</h3>
-              <p className="text-slate-600 mb-6">Create, edit, and manage all school courses</p>
-              <div className="flex justify-center gap-4">
-                <button className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Course Management</h3>
+                <button 
+                  onClick={() => setShowAddCourseModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                >
                   + Add New Course
                 </button>
-                <button className="bg-slate-600 hover:bg-slate-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
-                  View All Courses
-                </button>
               </div>
+              
+              {courses.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 rounded-xl">
+                  <p className="text-slate-600">No courses yet. Create your first course!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {courses.map((course) => (
+                    <div key={course.id} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                      <h4 className="text-lg font-bold text-slate-900 mb-2">{course.title}</h4>
+                      <p className="text-sm text-slate-600 mb-4">{course.description}</p>
+                      <div className="flex items-center justify-between text-sm text-slate-500 mb-4">
+                        <span>Teacher: {course.teacher}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => navigate("courseDetail", { courseId: course.id })}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm"
+                        >
+                          View
+                        </button>
+                        {onDeleteCourse && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete course "${course.title}"?`)) {
+                                onDeleteCourse(course.id);
+                              }
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg text-sm"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -301,21 +361,63 @@ const SchoolAdminSection: React.FC<{
           )}
 
           {activeTab === "tests" && (
-            <div className="text-center py-12">
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Test Management</h3>
-              <p className="text-slate-600 mb-6">Create and manage assessments for all courses</p>
-              <div className="flex justify-center gap-4">
-                <button className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Test Management</h3>
+                <button 
+                  onClick={() => navigate("createTest")}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                >
                   + Create New Test
                 </button>
-                <button className="bg-slate-600 hover:bg-slate-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors">
-                  View All Tests
-                </button>
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {courses.flatMap(course => 
+                  course.tests?.map(test => ({
+                    ...test,
+                    courseName: course.title,
+                    courseId: course.id
+                  })) || []
+                ).map((test) => (
+                  <div key={test.id} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                    <h4 className="text-lg font-bold text-slate-900 mb-2">{test.title}</h4>
+                    <p className="text-sm text-slate-600 mb-4">Course: {test.courseName}</p>
+                    <div className="text-sm text-slate-500 mb-4">
+                      <div>Due: {test.dueDate}</div>
+                      <div>Total Marks: {test.totalMarks}</div>
+                    </div>
+                    <button
+                      onClick={() => navigate("courseDetail", { courseId: test.courseId })}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm"
+                    >
+                      View Test
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              {courses.every(c => !c.tests || c.tests.length === 0) && (
+                <div className="text-center py-12 bg-slate-50 rounded-xl">
+                  <p className="text-slate-600">No tests created yet. Create your first test!</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+      
+      {/* Course Creation Modal */}
+      {showAddCourseModal && onAddCourse && (
+        <CreateCourseModal
+          isOpen={showAddCourseModal}
+          onClose={() => setShowAddCourseModal(false)}
+          onAddCourse={(courseData) => {
+            onAddCourse(courseData);
+            setShowAddCourseModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
 import { getCompetitiveExams } from "../../data/competitive";
 import { generatePerformanceSnapshot, getGuidanceFromPerformance, getNextRecommendedTest } from "../../utils/competitiveGuidance";
@@ -10,6 +10,8 @@ interface CompetitiveDashboardProps {
 
 const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate }) => {
   const { user, testResults, isAuthenticated, isAdmin, logout } = useCompetitiveUser();
+  const [competitiveExams, setCompetitiveExams] = useState(() => getCompetitiveExams());
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -17,9 +19,27 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
     }
   }, [isAuthenticated, navigate]);
 
-  if (!user) return null;
+  // Check for data updates every 3 seconds
+  useEffect(() => {
+    const checkForUpdates = () => {
+      const currentData = JSON.stringify(competitiveExams);
+      const newData = JSON.stringify(getCompetitiveExams());
+      
+      if (currentData !== newData) {
+        setShowUpdateNotification(true);
+      }
+    };
 
-  const competitiveExams = getCompetitiveExams();
+    const interval = setInterval(checkForUpdates, 3000);
+    return () => clearInterval(interval);
+  }, [competitiveExams]);
+
+  const handleRefreshData = () => {
+    setCompetitiveExams(getCompetitiveExams());
+    setShowUpdateNotification(false);
+  };
+
+  if (!user) return null;
 
   // Debug: Log admin status
   console.log("=== DASHBOARD DEBUG ===");
@@ -36,6 +56,27 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Update Notification Banner */}
+      {showUpdateNotification && (
+        <div className="bg-blue-600 text-white py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔔</span>
+              <div>
+                <p className="font-semibold">New Content Available!</p>
+                <p className="text-sm text-blue-100">Admin has added new exams, categories, or tests</p>
+              </div>
+            </div>
+            <button
+              onClick={handleRefreshData}
+              className="bg-white text-blue-600 font-semibold px-6 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 py-6">

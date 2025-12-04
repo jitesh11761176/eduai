@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
 import { getCompetitiveExams } from "../../data/competitive";
 import { Exam } from "../../types/competitive";
+import BulkTestUploadModal from "../admin/BulkTestUploadModal";
 
 interface CompetitiveAdminDashboardProps {
   navigate: (view: string, context?: any) => void;
@@ -19,6 +20,7 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   const [showAddExamModal, setShowAddExamModal] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [showAddTestModal, setShowAddTestModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string>("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
@@ -166,6 +168,52 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
       );
       alert("Test deleted successfully!");
     }
+  };
+
+  const handleBulkUpload = (testData: {
+    title: string;
+    difficulty: "Easy" | "Medium" | "Hard";
+    durationMinutes: number;
+    questions: any[];
+  }) => {
+    if (!selectedExamId || !selectedCategoryId) {
+      alert("Please select exam and category");
+      return;
+    }
+    
+    const newTest = {
+      id: `test-${Date.now()}`,
+      title: testData.title,
+      difficulty: testData.difficulty,
+      durationMinutes: testData.durationMinutes,
+      numQuestions: testData.questions.length,
+      questions: testData.questions, // Store actual questions
+    };
+    
+    setExams(
+      exams.map((exam) => {
+        if (exam.id === selectedExamId) {
+          return {
+            ...exam,
+            categories: exam.categories.map((cat) => {
+              if (cat.id === selectedCategoryId) {
+                return {
+                  ...cat,
+                  tests: [...cat.tests, newTest],
+                };
+              }
+              return cat;
+            }),
+          };
+        }
+        return exam;
+      })
+    );
+    
+    setShowBulkUploadModal(false);
+    setSelectedExamId("");
+    setSelectedCategoryId("");
+    alert(`Test "${testData.title}" created with ${testData.questions.length} questions!`);
   };
 
   const handleAddTest = () => {
@@ -411,6 +459,16 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                               className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1 rounded text-sm"
                             >
                               + Add Test
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedExamId(exam.id);
+                                setSelectedCategoryId(category.id);
+                                setShowBulkUploadModal(true);
+                              }}
+                              className="bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-1 rounded text-sm"
+                            >
+                              📤 Bulk Upload
                             </button>
                             <button
                               onClick={() => handleDeleteCategory(exam.id, category.id)}
@@ -714,6 +772,21 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Bulk Upload Modal */}
+      {showBulkUploadModal && (
+        <BulkTestUploadModal
+          isOpen={showBulkUploadModal}
+          onClose={() => {
+            setShowBulkUploadModal(false);
+            setSelectedExamId("");
+            setSelectedCategoryId("");
+          }}
+          onUpload={handleBulkUpload}
+          examName={exams.find(e => e.id === selectedExamId)?.name}
+          categoryName={exams.find(e => e.id === selectedExamId)?.categories.find(c => c.id === selectedCategoryId)?.name}
+        />
       )}
     </div>
   );

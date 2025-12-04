@@ -1013,6 +1013,13 @@ const App: React.FC = () => {
                 courses={courses}
                 students={students}
                 teachers={teachers}
+                onAddCourse={addCourse}
+                onDeleteCourse={(courseId: string) => {
+                    setCourses(prev => prev.filter(c => c.id !== courseId));
+                }}
+                onAddUser={handleCreateUser}
+                onUpdateUser={handleUpdateUser}
+                onDeleteUser={handleDeleteUser}
             />;
         }
 
