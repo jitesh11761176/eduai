@@ -19,6 +19,12 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
     }
   }, [isAuthenticated, navigate]);
 
+  // Force refresh data on component mount to ensure latest exams are shown
+  useEffect(() => {
+    const latestExams = getCompetitiveExams();
+    setCompetitiveExams(latestExams);
+  }, []);
+
   // Check for data updates every 3 seconds
   useEffect(() => {
     const checkForUpdates = () => {

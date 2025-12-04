@@ -781,7 +781,7 @@ export const testQuestions: { [testId: string]: Test } = {
 
 // Helper function to get exam by ID
 export const getExamById = (examId: string): Exam | undefined => {
-  return competitiveExams.find((exam) => exam.id === examId);
+  return getCompetitiveExams().find((exam) => exam.id === examId);
 };
 
 // Helper function to get category from exam
@@ -833,7 +833,7 @@ export const getTestById = (testId: string): Test | undefined => {
 
 // Helper function to get test summary
 export const getTestSummaryById = (testId: string): { exam: Exam; category: any; test: any } | null => {
-  for (const exam of competitiveExams) {
+  for (const exam of getCompetitiveExams()) {
     for (const category of exam.categories) {
       const test = category.tests.find((t) => t.id === testId);
       if (test) {
