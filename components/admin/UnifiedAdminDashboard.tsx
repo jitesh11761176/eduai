@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import CompetitiveAdminDashboard from "../competitive/CompetitiveAdminDashboard";
 import CreateCourseModal from "../course/CreateCourseModal";
+import { CompetitiveUserProvider } from "../../contexts/CompetitiveUserContext";
 
 interface UnifiedAdminDashboardProps {
   navigate: (view: string, context?: any) => void;
@@ -101,9 +102,11 @@ const UnifiedAdminDashboard: React.FC<UnifiedAdminDashboardProps> = ({
             onDeleteUser={onDeleteUser}
           />
         ) : (
-          <div className="bg-slate-50">
-            <CompetitiveAdminDashboard navigate={competitiveNavigate || navigate} />
-          </div>
+          <CompetitiveUserProvider>
+            <div className="bg-slate-50">
+              <CompetitiveAdminDashboard navigate={competitiveNavigate || navigate} />
+            </div>
+          </CompetitiveUserProvider>
         )}
       </div>
     </div>
