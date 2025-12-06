@@ -416,7 +416,16 @@ export const subscribeToCompetitiveExams = (callback: (exams: any[]) => void) =>
     const data = snapshot.val();
     if (data && data.data) {
       console.log('🔄 Real-time update received:', data.data);
-      callback(data.data);
+      // Ensure data is an array before calling callback
+      if (Array.isArray(data.data)) {
+        callback(data.data);
+      } else {
+        console.warn('⚠️ Firebase data is not an array:', data.data);
+        // Try to convert to array or use empty array
+        callback([]);
+      }
+    } else {
+      console.log('📭 No data in Firebase, keeping current state');
     }
   }, (error) => {
     console.error('❌ Error in real-time subscription:', error);

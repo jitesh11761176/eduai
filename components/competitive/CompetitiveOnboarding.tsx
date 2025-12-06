@@ -26,10 +26,15 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
     console.log("🔥 Subscribing to Firebase real-time updates...");
     const unsubscribe = subscribeToCompetitiveExams((newExams) => {
       console.log("🔄 Firebase update received! Updating exams...");
-      setCompetitiveExams(newExams);
-      setShowUpdateNotification(true);
-      // Update localStorage cache
-      localStorage.setItem("competitive_exams_data", JSON.stringify(newExams));
+      // Validate that newExams is an array
+      if (Array.isArray(newExams) && newExams.length >= 0) {
+        setCompetitiveExams(newExams);
+        setShowUpdateNotification(true);
+        // Update localStorage cache
+        localStorage.setItem("competitive_exams_data", JSON.stringify(newExams));
+      } else {
+        console.warn("⚠️ Received invalid exam data from Firebase:", newExams);
+      }
     });
     
     return () => {
