@@ -66,10 +66,10 @@ const BulkTestUploadModal: React.FC<BulkTestUploadModalProps> = ({
   };
 
   const downloadCSVTemplate = () => {
-    const csvContent = `Question,Option A,Option B,Option C,Option D,Correct Answer (0-3),Explanation (Optional)
-"What is 2+2?","2","3","4","5",2,"2+2 equals 4"
-"Capital of France?","London","Paris","Berlin","Madrid",1,"Paris is the capital of France"
-"Largest planet?","Earth","Mars","Jupiter","Venus",2,"Jupiter is the largest planet"`;
+    const csvContent = `Sr No,Question,Option1,Option2,Option3,Option4,Answer,Marks,Explanation
+1,"What is 2+2?","2","3","4","5","Option3",1,"2+2 equals 4"
+2,"Capital of France?","London","Paris","Berlin","Madrid","Option2",1,"Paris is the capital of France"
+3,"Largest planet?","Earth","Mars","Jupiter","Venus","Option3",1,"Jupiter is the largest planet"`;
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -125,30 +125,72 @@ const BulkTestUploadModal: React.FC<BulkTestUploadModalProps> = ({
             throw new Error("CSV file must have at least a header row and one question");
           }
 
+          // Parse header to detect format
+          const header = lines[0].toLowerCase();
+          const isNewFormat = header.includes("option1") || header.includes("option 1");
+
           const questions: Question[] = [];
+          
           for (let i = 1; i < lines.length; i++) {
-            const match = lines[i].match(/("([^"]*)"|[^,]+)/g);
-            if (!match || match.length < 6) continue;
+            try {
+              // Split by comma but respect quoted strings
+              const match = lines[i].match(/("([^"]*)"|[^,]+)/g);
+              if (!match || match.length < 6) continue;
 
-            const cleanValue = (val: string) => val.replace(/^"|"$/g, "").trim();
-            
-            const question = cleanValue(match[0]);
-            const options = [
-              cleanValue(match[1]),
-              cleanValue(match[2]),
-              cleanValue(match[3]),
-              cleanValue(match[4]),
-            ];
-            const correctAnswer = parseInt(cleanValue(match[5]));
-            const explanation = match[6] ? cleanValue(match[6]) : "";
+              const cleanValue = (val: string) => val.replace(/^"|"$/g, "").trim();
 
-            if (question && options.every(o => o) && !isNaN(correctAnswer) && correctAnswer >= 0 && correctAnswer <= 3) {
-              questions.push({ question, options, correctAnswer, explanation });
+              if (isNewFormat) {
+                // New format: Sr No,Question,Option1,Option2,Option3,Option4,Answer,Marks,Explanation
+                const srNo = cleanValue(match[0]);
+                const question = cleanValue(match[1]);
+                const options = [
+                  cleanValue(match[2]),
+                  cleanValue(match[3]),
+                  cleanValue(match[4]),
+                  cleanValue(match[5]),
+                ];
+                const answerText = cleanValue(match[6]); // e.g., "Option3" or "Queue"
+                const explanation = match.length > 8 ? cleanValue(match[8]) : "";
+
+                // Convert "Option1", "Option2", etc. to index 0, 1, 2, 3
+                let correctAnswer = -1;
+                if (answerText.match(/^option\s*1$/i)) correctAnswer = 0;
+                else if (answerText.match(/^option\s*2$/i)) correctAnswer = 1;
+                else if (answerText.match(/^option\s*3$/i)) correctAnswer = 2;
+                else if (answerText.match(/^option\s*4$/i)) correctAnswer = 3;
+                else {
+                  // Try to match answer text with one of the options
+                  correctAnswer = options.findIndex(opt => 
+                    opt.toLowerCase() === answerText.toLowerCase()
+                  );
+                }
+
+                if (question && options.every(o => o) && correctAnswer >= 0 && correctAnswer <= 3) {
+                  questions.push({ question, options, correctAnswer, explanation });
+                }
+              } else {
+                // Old format: Question,Option A,Option B,Option C,Option D,Correct Answer (0-3),Explanation
+                const question = cleanValue(match[0]);
+                const options = [
+                  cleanValue(match[1]),
+                  cleanValue(match[2]),
+                  cleanValue(match[3]),
+                  cleanValue(match[4]),
+                ];
+                const correctAnswer = parseInt(cleanValue(match[5]));
+                const explanation = match[6] ? cleanValue(match[6]) : "";
+
+                if (question && options.every(o => o) && !isNaN(correctAnswer) && correctAnswer >= 0 && correctAnswer <= 3) {
+                  questions.push({ question, options, correctAnswer, explanation });
+                }
+              }
+            } catch (lineError) {
+              console.warn(`Skipping line ${i + 1}:`, lineError);
             }
           }
 
           if (questions.length === 0) {
-            throw new Error("No valid questions found in CSV file");
+            throw new Error("No valid questions found in CSV file. Check the format and Answer column.");
           }
 
           setUploadedData(questions);
