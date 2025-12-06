@@ -131,6 +131,7 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:0000000000000000000000",
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project"}-default-rtdb.firebaseio.com`,
 };
 
 // Initialize Firebase only if we have a valid API key
@@ -144,7 +145,15 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
-  realtimeDb = getDatabase(app);
+  
+  // Try to initialize Realtime Database
+  try {
+    realtimeDb = getDatabase(app);
+  } catch (dbError) {
+    console.warn('Realtime Database initialization failed, will use localStorage fallback:', dbError);
+    realtimeDb = null;
+  }
+  
   provider = new GoogleAuthProvider();
 } catch (error) {
   console.warn('Firebase initialization skipped - using demo mode. Configure .env file for full functionality.');
