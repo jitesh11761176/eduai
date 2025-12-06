@@ -20,6 +20,25 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
     setCompetitiveExams(latestExams);
   }, []);
   
+  // Listen for storage changes (when admin updates data in another tab)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "competitive_exams_data" && e.newValue) {
+        console.log("🔄 Storage changed! Updating exams...");
+        try {
+          const newExams = JSON.parse(e.newValue);
+          setCompetitiveExams(newExams);
+          setShowUpdateNotification(true);
+        } catch (err) {
+          console.error("Failed to parse storage change:", err);
+        }
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+  
   // Check for data updates every 3 seconds
   useEffect(() => {
     const checkForUpdates = () => {
@@ -101,7 +120,18 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
 
         {/* Exam Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {competitiveExams.map((exam) => {
+          {competitiveExams.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-slate-600 mb-4">No exams available yet. Admin needs to create exams first.</p>
+              <button
+                onClick={handleRefreshData}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg"
+              >
+                🔄 Refresh Data
+              </button>
+            </div>
+          ) : (
+            competitiveExams.map((exam) => {
             const isSelected = selectedExams.includes(exam.id);
             return (
               <button
@@ -182,7 +212,8 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
                 </div>
               </button>
             );
-          })}
+          })
+          )}
         </div>
 
         {/* Continue Button */}

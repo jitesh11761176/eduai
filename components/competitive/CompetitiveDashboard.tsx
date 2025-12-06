@@ -26,6 +26,25 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
     console.log("📊 Total exams loaded:", latestExams.length);
     setCompetitiveExams(latestExams);
   }, []);
+  
+  // Listen for storage changes (when admin updates data in another tab)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "competitive_exams_data" && e.newValue) {
+        console.log("🔄 Storage changed! Updating exams...");
+        try {
+          const newExams = JSON.parse(e.newValue);
+          setCompetitiveExams(newExams);
+          setShowUpdateNotification(true);
+        } catch (err) {
+          console.error("Failed to parse storage change:", err);
+        }
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   // Check for data updates every 3 seconds
   useEffect(() => {
