@@ -820,11 +820,37 @@ export const getTestById = (testId: string): Test | undefined => {
     return testQuestions[testId];
   }
   
-  // If not, generate default test with sample questions
+  // Get test info
   const testInfo = getTestSummaryById(testId);
   if (!testInfo) return undefined;
   
   const { exam, category, test } = testInfo;
+  
+  // Check if test has questions stored in it (from bulk upload)
+  if (test.questions && Array.isArray(test.questions) && test.questions.length > 0) {
+    // Transform questions to match Test format
+    const questions = test.questions.map((q: any, i: number) => ({
+      id: q.id || `${testId}-q${i + 1}`,
+      text: q.question || q.text,
+      options: q.options || [],
+      correctOptionIndex: q.correctAnswer !== undefined ? q.correctAnswer : q.correctOptionIndex,
+      explanation: q.explanation || "",
+      topic: q.topic || category.name,
+      difficulty: q.difficulty || test.difficulty as "Easy" | "Medium" | "Hard",
+    }));
+    
+    return {
+      id: testId,
+      examId: exam.id,
+      categoryId: category.id,
+      title: test.title,
+      difficulty: test.difficulty as "Easy" | "Medium" | "Hard",
+      durationMinutes: test.durationMinutes,
+      questions,
+    };
+  }
+  
+  // If not, generate default test with sample questions
   const numQuestions = test.numQuestions || 25;
   
   // Generate sample questions
