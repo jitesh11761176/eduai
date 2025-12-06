@@ -427,5 +427,4 @@ export const subscribeToCompetitiveExams = (callback: (exams: any[]) => void) =>
 };
 
 export { auth, db, realtimeDb };
-export { auth, db };
 export type { FirebaseUser };
