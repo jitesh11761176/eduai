@@ -11,6 +11,7 @@ interface CompetitiveTestRunnerProps {
 const CompetitiveTestRunner: React.FC<CompetitiveTestRunnerProps> = ({ navigate, testId }) => {
   const { isAuthenticated, addTestResult } = useCompetitiveUser();
 
+  const [hasStarted, setHasStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [questionId: string]: number }>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
@@ -26,10 +27,14 @@ const CompetitiveTestRunner: React.FC<CompetitiveTestRunnerProps> = ({ navigate,
       return;
     }
 
-    if (test) {
+    if (test && hasStarted) {
       setTimeRemaining(test.durationMinutes * 60);
     }
-  }, [isAuthenticated, navigate, test]);
+  }, [isAuthenticated, navigate, test, hasStarted]);
+
+  const handleStartTest = () => {
+    setHasStarted(true);
+  };
 
   const handleSubmit = () => {
     if (!test) return;
@@ -93,8 +98,10 @@ const CompetitiveTestRunner: React.FC<CompetitiveTestRunnerProps> = ({ navigate,
     navigate("testResult", { testId });
   };
 
-  // Timer
+  // Timer - only start when test has started
   useEffect(() => {
+    if (!hasStarted) return;
+    
     if (timeRemaining <= 0) {
       handleSubmit();
       return;
@@ -105,10 +112,89 @@ const CompetitiveTestRunner: React.FC<CompetitiveTestRunnerProps> = ({ navigate,
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining, handleSubmit]);
+  }, [timeRemaining, handleSubmit, hasStarted]);
 
   if (!test || !testInfo) {
     return <div className="p-8">Test not found</div>;
+  }
+
+  // Show start screen before test begins
+  if (!hasStarted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">{test.title}</h1>
+            <p className="text-slate-600">{testInfo.examName} • {testInfo.categoryName}</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-8 p-6 bg-slate-50 rounded-lg">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{test.questions.length}</div>
+              <div className="text-sm text-slate-600">Questions</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{test.durationMinutes}</div>
+              <div className="text-sm text-slate-600">Minutes</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{test.difficulty}</div>
+              <div className="text-sm text-slate-600">Difficulty</div>
+            </div>
+          </div>
+
+          <div className="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Instructions
+            </h3>
+            <ul className="space-y-2 text-sm text-blue-900">
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span>The test will start as soon as you click "Start Test"</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span>Timer will begin immediately and cannot be paused</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span>You can flag questions for review and navigate between questions</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span>Make sure you have a stable internet connection</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span>The test will auto-submit when time expires</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => navigate("dashboard")}
+              className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleStartTest}
+              className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Start Test
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const currentQuestion = test.questions[currentQuestionIndex];
