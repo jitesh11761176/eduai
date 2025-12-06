@@ -1,7 +1,9 @@
 import { Exam, Test } from "../types/competitive";
+import { loadCompetitiveExams } from "../services/firebase";
 
-// Get exams from localStorage or return default data
+// Get exams from Firebase Realtime Database or localStorage fallback
 export const getCompetitiveExams = (): Exam[] => {
+  // Try localStorage first (synchronous fallback)
   const stored = localStorage.getItem("competitive_exams_data");
   if (stored) {
     try {
@@ -15,6 +17,24 @@ export const getCompetitiveExams = (): Exam[] => {
   // Return default data if nothing in localStorage
   console.log("⚠️ getCompetitiveExams: No data in localStorage, using defaults");
   return competitiveExams;
+};
+
+// Async version that loads from Firebase
+export const getCompetitiveExamsAsync = async (): Promise<Exam[]> => {
+  try {
+    const firebaseData = await loadCompetitiveExams();
+    if (firebaseData && Array.isArray(firebaseData)) {
+      console.log("✅ getCompetitiveExamsAsync: Loaded from Firebase", firebaseData);
+      // Also save to localStorage as cache
+      localStorage.setItem("competitive_exams_data", JSON.stringify(firebaseData));
+      return firebaseData;
+    }
+  } catch (error) {
+    console.error("❌ Error loading from Firebase:", error);
+  }
+  
+  // Fallback to localStorage or defaults
+  return getCompetitiveExams();
 };
 
 // Mock data representing admin-created competitive exams content

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
 import { getCompetitiveExams } from "../../data/competitive";
+import { subscribeToCompetitiveExams } from "../../services/firebase";
 
 interface CompetitiveOnboardingProps {
   navigate: (view: string, context?: any) => void;
@@ -18,6 +19,23 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
     console.log("👤 User loaded exams from localStorage:", latestExams);
     console.log("📊 Total exams loaded:", latestExams.length);
     setCompetitiveExams(latestExams);
+  }, []);
+  
+  // Subscribe to Firebase real-time updates
+  useEffect(() => {
+    console.log("🔥 Subscribing to Firebase real-time updates...");
+    const unsubscribe = subscribeToCompetitiveExams((newExams) => {
+      console.log("🔄 Firebase update received! Updating exams...");
+      setCompetitiveExams(newExams);
+      setShowUpdateNotification(true);
+      // Update localStorage cache
+      localStorage.setItem("competitive_exams_data", JSON.stringify(newExams));
+    });
+    
+    return () => {
+      console.log("🔥 Unsubscribing from Firebase updates");
+      unsubscribe();
+    };
   }, []);
   
   // Listen for storage changes (when admin updates data in another tab)

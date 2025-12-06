@@ -3,6 +3,7 @@ import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
 import { getCompetitiveExams } from "../../data/competitive";
 import { Exam } from "../../types/competitive";
 import BulkTestUploadModal from "../admin/BulkTestUploadModal";
+import { saveCompetitiveExams, subscribeToCompetitiveExams } from "../../services/firebase";
 
 interface CompetitiveAdminDashboardProps {
   navigate: (view: string, context?: any) => void;
@@ -37,12 +38,21 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   // Get user data from localStorage
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Save exams to localStorage whenever they change
+  // Save exams to Firebase whenever they change
   useEffect(() => {
-    localStorage.setItem("competitive_exams_data", JSON.stringify(exams));
-    setLastSaved(new Date());
-    console.log("📝 Admin saved data to localStorage:", exams);
+    const saveData = async () => {
+      setIsSaving(true);
+      await saveCompetitiveExams(exams);
+      // Also keep localStorage as backup
+      localStorage.setItem("competitive_exams_data", JSON.stringify(exams));
+      setLastSaved(new Date());
+      setIsSaving(false);
+      console.log("📝 Admin saved data to Firebase:", exams);
+    };
+    
+    saveData();
   }, [exams]);
 
   useEffect(() => {
@@ -306,14 +316,18 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
     <div className="min-h-screen bg-slate-50">
       {/* Data Sync Indicator */}
       {lastSaved && (
-        <div className="bg-green-50 border-b border-green-200 py-2">
+        <div className={`border-b py-2 ${isSaving ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
           <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
-            <span className="text-sm text-green-700">
-              ✓ Changes auto-saved at {lastSaved.toLocaleTimeString()}
+            <span className="text-sm">
+              {isSaving ? (
+                <span className="text-yellow-700">⏳ Saving to Firebase...</span>
+              ) : (
+                <span className="text-green-700">✓ Saved to Firebase at {lastSaved.toLocaleTimeString()}</span>
+              )}
             </span>
             <button
               onClick={handleRefreshData}
-              className="text-sm text-green-700 hover:text-green-800 font-medium underline"
+              className={`text-sm font-medium underline ${isSaving ? 'text-yellow-700 hover:text-yellow-800' : 'text-green-700 hover:text-green-800'}`}
             >
               🔄 Refresh Data
             </button>

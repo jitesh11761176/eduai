@@ -3,6 +3,7 @@ import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
 import { getCompetitiveExams } from "../../data/competitive";
 import { generatePerformanceSnapshot, getGuidanceFromPerformance, getNextRecommendedTest } from "../../utils/competitiveGuidance";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { subscribeToCompetitiveExams } from "../../services/firebase";
 
 interface CompetitiveDashboardProps {
   navigate: (view: string, context?: any) => void;
@@ -25,6 +26,23 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
     console.log("👤 Dashboard loaded exams from localStorage:", latestExams);
     console.log("📊 Total exams loaded:", latestExams.length);
     setCompetitiveExams(latestExams);
+  }, []);
+  
+  // Subscribe to Firebase real-time updates
+  useEffect(() => {
+    console.log("🔥 Dashboard subscribing to Firebase real-time updates...");
+    const unsubscribe = subscribeToCompetitiveExams((newExams) => {
+      console.log("🔄 Firebase update received! Updating dashboard exams...");
+      setCompetitiveExams(newExams);
+      setShowUpdateNotification(true);
+      // Update localStorage cache
+      localStorage.setItem("competitive_exams_data", JSON.stringify(newExams));
+    });
+    
+    return () => {
+      console.log("🔥 Dashboard unsubscribing from Firebase updates");
+      unsubscribe();
+    };
   }, []);
   
   // Listen for storage changes (when admin updates data in another tab)

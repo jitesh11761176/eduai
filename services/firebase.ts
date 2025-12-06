@@ -121,6 +121,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, User as FirebaseUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { generateInitialAvatar } from '../utils/avatarUtils';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, where, deleteDoc } from "firebase/firestore";
+import { getDatabase, ref, set, onValue, off } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
@@ -136,18 +137,21 @@ const firebaseConfig = {
 let app: any;
 let auth: any;
 let db: any;
+let realtimeDb: any;
 let provider: any;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  realtimeDb = getDatabase(app);
   provider = new GoogleAuthProvider();
 } catch (error) {
   console.warn('Firebase initialization skipped - using demo mode. Configure .env file for full functionality.');
   // Create mock objects to prevent errors
   auth = null;
   db = null;
+  realtimeDb = null;
   provider = null;
 }
 
@@ -320,5 +324,99 @@ export const unmarkMaterialCompletedFS = async (studentId: string, courseId: str
   await deleteDoc(ref);
 };
 
+// ============================================
+// COMPETITIVE EXAMS - REALTIME DATABASE
+// ============================================
+
+/**
+ * Save competitive exams data to Firebase Realtime Database
+ * This replaces localStorage for multi-device sync
+ */
+export const saveCompetitiveExams = async (examsData: any) => {
+  if (!realtimeDb) {
+    console.warn('Realtime Database not initialized. Falling back to localStorage.');
+    localStorage.setItem("competitive_exams_data", JSON.stringify(examsData));
+    return;
+  }
+  
+  try {
+    const examsRef = ref(realtimeDb, 'competitive_exams');
+    await set(examsRef, {
+      data: examsData,
+      lastUpdated: Date.now(),
+      version: 1
+    });
+    console.log('✅ Competitive exams saved to Firebase:', examsData);
+  } catch (error) {
+    console.error('❌ Failed to save to Firebase, using localStorage fallback:', error);
+    localStorage.setItem("competitive_exams_data", JSON.stringify(examsData));
+  }
+};
+
+/**
+ * Load competitive exams data from Firebase Realtime Database
+ * Returns a promise that resolves with the exams data
+ */
+export const loadCompetitiveExams = (): Promise<any[] | null> => {
+  return new Promise((resolve) => {
+    if (!realtimeDb) {
+      console.warn('Realtime Database not initialized. Using localStorage.');
+      const stored = localStorage.getItem("competitive_exams_data");
+      resolve(stored ? JSON.parse(stored) : null);
+      return;
+    }
+
+    try {
+      const examsRef = ref(realtimeDb, 'competitive_exams');
+      onValue(examsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.data) {
+          console.log('✅ Loaded competitive exams from Firebase:', data.data);
+          resolve(data.data);
+        } else {
+          console.log('⚠️ No data in Firebase, checking localStorage...');
+          const stored = localStorage.getItem("competitive_exams_data");
+          resolve(stored ? JSON.parse(stored) : null);
+        }
+      }, (error) => {
+        console.error('❌ Failed to load from Firebase:', error);
+        const stored = localStorage.getItem("competitive_exams_data");
+        resolve(stored ? JSON.parse(stored) : null);
+      });
+    } catch (error) {
+      console.error('❌ Error accessing Firebase:', error);
+      const stored = localStorage.getItem("competitive_exams_data");
+      resolve(stored ? JSON.parse(stored) : null);
+    }
+  });
+};
+
+/**
+ * Subscribe to real-time updates of competitive exams data
+ * Callback is called whenever data changes in Firebase
+ */
+export const subscribeToCompetitiveExams = (callback: (exams: any[]) => void) => {
+  if (!realtimeDb) {
+    console.warn('Realtime Database not initialized. Cannot subscribe to updates.');
+    return () => {}; // Return empty cleanup function
+  }
+
+  const examsRef = ref(realtimeDb, 'competitive_exams');
+  
+  const unsubscribe = onValue(examsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data && data.data) {
+      console.log('🔄 Real-time update received:', data.data);
+      callback(data.data);
+    }
+  }, (error) => {
+    console.error('❌ Error in real-time subscription:', error);
+  });
+
+  // Return cleanup function
+  return () => off(examsRef);
+};
+
+export { auth, db, realtimeDb };
 export { auth, db };
 export type { FirebaseUser };
