@@ -26,14 +26,13 @@ const CompetitiveTestRunner: React.FC<CompetitiveTestRunnerProps> = ({ navigate,
       navigate("login");
       return;
     }
-
-    if (test && hasStarted) {
-      setTimeRemaining(test.durationMinutes * 60);
-    }
-  }, [isAuthenticated, navigate, test, hasStarted]);
+  }, [isAuthenticated, navigate]);
 
   const handleStartTest = () => {
-    setHasStarted(true);
+    if (test) {
+      setTimeRemaining(test.durationMinutes * 60);
+      setHasStarted(true);
+    }
   };
 
   const handleSubmit = () => {
