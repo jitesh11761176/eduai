@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
 import { getTestById, getTestSummaryById } from "../../data/competitive";
 import { generateGuidanceFromResult } from "../../utils/competitiveGuidance";
@@ -11,6 +11,14 @@ interface CompetitiveTestResultProps {
 
 const CompetitiveTestResult: React.FC<CompetitiveTestResultProps> = ({ navigate, testId }) => {
   const { isAuthenticated, testResults } = useCompetitiveUser();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedback, setFeedback] = useState({
+    questionQuality: 5,
+    explanationClarity: 5,
+    difficultyRating: 3,
+    comments: "",
+  });
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -39,6 +47,24 @@ const CompetitiveTestResult: React.FC<CompetitiveTestResultProps> = ({ navigate,
     section,
     accuracy,
   }));
+
+  const handleSubmitFeedback = () => {
+    // Save feedback to localStorage (in production, send to backend)
+    const existingFeedback = JSON.parse(localStorage.getItem("test_feedback") || "{}");
+    existingFeedback[testId] = {
+      ...feedback,
+      testId,
+      testTitle: test.title,
+      submittedAt: new Date().toISOString(),
+    };
+    localStorage.setItem("test_feedback", JSON.stringify(existingFeedback));
+    
+    setFeedbackSubmitted(true);
+    setTimeout(() => {
+      setShowFeedbackModal(false);
+      setFeedbackSubmitted(false);
+    }, 2000);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -256,6 +282,15 @@ const CompetitiveTestResult: React.FC<CompetitiveTestResultProps> = ({ navigate,
         {/* Action Buttons */}
         <div className="flex gap-4 mt-8 justify-center">
           <button
+            onClick={() => setShowFeedbackModal(true)}
+            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            Give Feedback
+          </button>
+          <button
             onClick={() => navigate("testRunner", { testId })}
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
           >
@@ -269,6 +304,155 @@ const CompetitiveTestResult: React.FC<CompetitiveTestResultProps> = ({ navigate,
           </button>
         </div>
       </div>
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Test Feedback</h2>
+                <button
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {feedbackSubmitted ? (
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Thank You!</h3>
+                  <p className="text-slate-600">Your feedback has been submitted successfully.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Question Quality */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-3">
+                      How would you rate the quality of questions?
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          onClick={() => setFeedback({ ...feedback, questionQuality: rating })}
+                          className={`flex-1 py-2 px-4 rounded-lg border-2 transition-all ${
+                            feedback.questionQuality >= rating
+                              ? "border-yellow-400 bg-yellow-50 text-yellow-700"
+                              : "border-slate-200 text-slate-400 hover:border-slate-300"
+                          }`}
+                        >
+                          <svg className="w-6 h-6 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Poor</span>
+                      <span>Excellent</span>
+                    </div>
+                  </div>
+
+                  {/* Explanation Clarity */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-3">
+                      Were the explanations clear and helpful?
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          onClick={() => setFeedback({ ...feedback, explanationClarity: rating })}
+                          className={`flex-1 py-2 px-4 rounded-lg border-2 transition-all ${
+                            feedback.explanationClarity >= rating
+                              ? "border-blue-400 bg-blue-50 text-blue-700"
+                              : "border-slate-200 text-slate-400 hover:border-slate-300"
+                          }`}
+                        >
+                          <svg className="w-6 h-6 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>Not Clear</span>
+                      <span>Very Clear</span>
+                    </div>
+                  </div>
+
+                  {/* Difficulty Rating */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-3">
+                      How did you find the difficulty level?
+                    </label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 1, label: "Too Easy" },
+                        { value: 2, label: "Easy" },
+                        { value: 3, label: "Just Right" },
+                        { value: 4, label: "Hard" },
+                        { value: 5, label: "Too Hard" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setFeedback({ ...feedback, difficultyRating: option.value })}
+                          className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                            feedback.difficultyRating === option.value
+                              ? "border-purple-500 bg-purple-50 text-purple-700"
+                              : "border-slate-200 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Comments */}
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-2">
+                      Additional Comments (Optional)
+                    </label>
+                    <textarea
+                      value={feedback.comments}
+                      onChange={(e) => setFeedback({ ...feedback, comments: e.target.value })}
+                      placeholder="Share your thoughts about the test, questions, or anything else..."
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={() => setShowFeedbackModal(false)}
+                      className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitFeedback}
+                      className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      Submit Feedback
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
