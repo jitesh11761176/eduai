@@ -1,6 +1,21 @@
 import { Exam, Test } from "../types/competitive";
 import { loadCompetitiveExams } from "../services/firebase";
 
+// Validate and fix exam data structure
+const validateExamData = (exams: any[]): Exam[] => {
+  if (!Array.isArray(exams)) return competitiveExams;
+  
+  return exams.map(exam => ({
+    ...exam,
+    categories: Array.isArray(exam.categories) 
+      ? exam.categories.map((cat: any) => ({
+          ...cat,
+          tests: Array.isArray(cat.tests) ? cat.tests : []
+        }))
+      : []
+  }));
+};
+
 // Get exams from Firebase Realtime Database or localStorage fallback
 export const getCompetitiveExams = (): Exam[] => {
   // Try localStorage first (synchronous fallback)
@@ -8,8 +23,9 @@ export const getCompetitiveExams = (): Exam[] => {
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
-      console.log("✅ getCompetitiveExams: Loaded from localStorage", parsed);
-      return parsed;
+      const validated = validateExamData(parsed);
+      console.log("✅ getCompetitiveExams: Loaded from localStorage", validated);
+      return validated;
     } catch (e) {
       console.error("❌ Failed to parse stored exams:", e);
     }
@@ -24,10 +40,11 @@ export const getCompetitiveExamsAsync = async (): Promise<Exam[]> => {
   try {
     const firebaseData = await loadCompetitiveExams();
     if (firebaseData && Array.isArray(firebaseData)) {
-      console.log("✅ getCompetitiveExamsAsync: Loaded from Firebase", firebaseData);
+      const validated = validateExamData(firebaseData);
+      console.log("✅ getCompetitiveExamsAsync: Loaded from Firebase", validated);
       // Also save to localStorage as cache
-      localStorage.setItem("competitive_exams_data", JSON.stringify(firebaseData));
-      return firebaseData;
+      localStorage.setItem("competitive_exams_data", JSON.stringify(validated));
+      return validated;
     }
   } catch (error) {
     console.error("❌ Error loading from Firebase:", error);
