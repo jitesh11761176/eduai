@@ -191,8 +191,12 @@ export const getNextRecommendedTest = (
   const attemptedTestIds = new Set(testResults.map((r) => r.testId));
 
   for (const exam of userExams) {
-    for (const category of exam.categories) {
-      for (const test of category.tests) {
+    // Safety check: ensure categories exists and is array
+    const categories = Array.isArray(exam.categories) ? exam.categories : [];
+    for (const category of categories) {
+      // Safety check: ensure tests exists and is array
+      const tests = Array.isArray(category.tests) ? category.tests : [];
+      for (const test of tests) {
         if (!attemptedTestIds.has(test.id)) {
           return {
             exam: exam.name,
@@ -209,8 +213,12 @@ export const getNextRecommendedTest = (
     const lowestScore = [...testResults].sort((a, b) => a.scorePercent - b.scorePercent)[0];
     
     for (const exam of userExams) {
-      for (const category of exam.categories) {
-        const test = category.tests.find((t) => t.id === lowestScore.testId);
+      // Safety check: ensure categories exists and is array
+      const categories = Array.isArray(exam.categories) ? exam.categories : [];
+      for (const category of categories) {
+        // Safety check: ensure tests exists and is array
+        const tests = Array.isArray(category.tests) ? category.tests : [];
+        const test = tests.find((t) => t.id === lowestScore.testId);
         if (test) {
           return {
             exam: exam.name,
@@ -223,12 +231,19 @@ export const getNextRecommendedTest = (
   }
 
   // Default: return first test of first selected exam
-  if (userExams.length > 0 && userExams[0].categories.length > 0 && userExams[0].categories[0].tests.length > 0) {
-    return {
-      exam: userExams[0].name,
-      category: userExams[0].categories[0].name,
-      test: userExams[0].categories[0].tests[0],
-    };
+  if (userExams.length > 0) {
+    const firstExam = userExams[0];
+    const categories = Array.isArray(firstExam.categories) ? firstExam.categories : [];
+    if (categories.length > 0) {
+      const tests = Array.isArray(categories[0].tests) ? categories[0].tests : [];
+      if (tests.length > 0) {
+        return {
+          exam: firstExam.name,
+          category: categories[0].name,
+          test: tests[0],
+        };
+      }
+    }
   }
 
   return null;
