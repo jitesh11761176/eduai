@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
-import { getCompetitiveExams } from "../../data/competitive";
+import { getCompetitiveExams, validateExamData } from "../../data/competitive";
 import { subscribeToCompetitiveExams } from "../../services/firebase";
 
 interface CompetitiveOnboardingProps {
@@ -26,12 +26,13 @@ const CompetitiveOnboarding: React.FC<CompetitiveOnboardingProps> = ({ navigate 
     console.log("🔥 Subscribing to Firebase real-time updates...");
     const unsubscribe = subscribeToCompetitiveExams((newExams) => {
       console.log("🔄 Firebase update received! Updating exams...");
-      // Validate that newExams is an array
+      // Validate and sanitize exam data structure
       if (Array.isArray(newExams) && newExams.length >= 0) {
-        setCompetitiveExams(newExams);
+        const validatedExams = validateExamData(newExams);
+        setCompetitiveExams(validatedExams);
         setShowUpdateNotification(true);
-        // Update localStorage cache
-        localStorage.setItem("competitive_exams_data", JSON.stringify(newExams));
+        // Update localStorage cache with validated data
+        localStorage.setItem("competitive_exams_data", JSON.stringify(validatedExams));
       } else {
         console.warn("⚠️ Received invalid exam data from Firebase:", newExams);
       }

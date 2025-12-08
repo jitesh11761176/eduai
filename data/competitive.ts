@@ -2,7 +2,7 @@ import { Exam, Test } from "../types/competitive";
 import { loadCompetitiveExams } from "../services/firebase";
 
 // Validate and fix exam data structure
-const validateExamData = (exams: any[]): Exam[] => {
+export const validateExamData = (exams: any[]): Exam[] => {
   if (!Array.isArray(exams)) return competitiveExams;
   
   return exams.map(exam => ({

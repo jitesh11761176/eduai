@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useCompetitiveUser } from "../../contexts/CompetitiveUserContext";
-import { getCompetitiveExams } from "../../data/competitive";
+import { getCompetitiveExams, validateExamData } from "../../data/competitive";
 import { generatePerformanceSnapshot, getGuidanceFromPerformance, getNextRecommendedTest } from "../../utils/competitiveGuidance";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { subscribeToCompetitiveExams } from "../../services/firebase";
 
 interface CompetitiveDashboardProps {
@@ -33,12 +33,13 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
     console.log("🔥 Dashboard subscribing to Firebase real-time updates...");
     const unsubscribe = subscribeToCompetitiveExams((newExams) => {
       console.log("🔄 Firebase update received! Updating dashboard exams...");
-      // Validate that newExams is an array
+      // Validate and sanitize exam data structure
       if (Array.isArray(newExams) && newExams.length >= 0) {
-        setCompetitiveExams(newExams);
+        const validatedExams = validateExamData(newExams);
+        setCompetitiveExams(validatedExams);
         setShowUpdateNotification(true);
-        // Update localStorage cache
-        localStorage.setItem("competitive_exams_data", JSON.stringify(newExams));
+        // Update localStorage cache with validated data
+        localStorage.setItem("competitive_exams_data", JSON.stringify(validatedExams));
       } else {
         console.warn("⚠️ Received invalid exam data from Firebase:", newExams);
       }
