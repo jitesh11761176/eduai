@@ -102,7 +102,9 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
   const guidanceTips = getGuidanceFromPerformance(testResults);
   const nextTest = getNextRecommendedTest(testResults, user.selectedExams);
 
-  const userExams = competitiveExams.filter((exam) => user.selectedExams.includes(exam.id));
+  // Safety check: ensure competitiveExams is an array
+  const safeCompetitiveExams = Array.isArray(competitiveExams) ? competitiveExams : [];
+  const userExams = safeCompetitiveExams.filter((exam) => user.selectedExams.includes(exam.id));
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -136,7 +138,7 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
                 Welcome back, {user.name.split(" ")[0]}! 👋
               </h1>
               <p className="text-slate-600 mt-1">
-                You're preparing for: {user.selectedExams.map(id => competitiveExams.find(e => e.id === id)?.name).join(", ")}
+                You're preparing for: {user.selectedExams.map(id => safeCompetitiveExams.find(e => e.id === id)?.name).filter(Boolean).join(", ") || "Loading..."}
               </p>
               {/* DEBUG: Show admin status */}
               <div className="mt-2 text-xs">
@@ -228,7 +230,9 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
             <div className="space-y-4">
               {userExams.map((exam) => {
                 const examTests = testResults.filter(r => r.examId === exam.id);
-                const totalTests = exam.categories.reduce((sum, cat) => sum + cat.tests.length, 0);
+                // Safety check: ensure categories exists and is array
+                const categories = Array.isArray(exam.categories) ? exam.categories : [];
+                const totalTests = categories.reduce((sum, cat) => sum + (Array.isArray(cat.tests) ? cat.tests.length : 0), 0);
                 const completedTests = examTests.length;
                 const avgScore = examTests.length > 0 
                   ? Math.round(examTests.reduce((sum, r) => sum + r.scorePercent, 0) / examTests.length)
