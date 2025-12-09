@@ -68,12 +68,14 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
           const user = JSON.parse(localStorage.getItem(key) || "");
           users.push(user);
           
-          // Also load their test results
+          // Also load their test results with email attached
           const email = key.replace("competitive_user_", "");
           const userResults = localStorage.getItem(`competitive_test_results_${email}`);
           if (userResults) {
             const parsed = JSON.parse(userResults);
-            results.push(...parsed);
+            // Attach email to each result for filtering
+            const resultsWithEmail = parsed.map((r: any) => ({ ...r, userEmail: email }));
+            results.push(...resultsWithEmail);
           }
         } catch (e) {
           console.error("Failed to parse user data:", e);
@@ -320,8 +322,6 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
     (sum, exam) => sum + exam.categories.reduce((catSum, cat) => catSum + cat.tests.length, 0),
     0
   );
-
-  const totalAttempts = testResults.length;
   
   const handleRefreshData = () => {
     const freshData = getCompetitiveExams();
@@ -428,7 +428,7 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                 <div className="text-slate-600">Total Tests</div>
               </div>
               <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                <div className="text-3xl font-bold text-orange-600 mb-2">{totalAttempts}</div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">{allTestResults.length}</div>
                 <div className="text-slate-600">Total Attempts</div>
               </div>
             </div>
@@ -583,7 +583,7 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                 <tbody className="divide-y divide-slate-200">
                   {allUsers.map((user, index) => {
                     const userAttempts = allTestResults.filter((r) =>
-                      user.selectedExams?.includes(r.examId)
+                      r.userEmail === user.email
                     ).length;
                     
                     // Get exam names from IDs
