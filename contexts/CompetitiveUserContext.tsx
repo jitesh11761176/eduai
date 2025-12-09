@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { CompetitiveUser, TestResult } from "../types/competitive";
+import {
+  initGoogleDrive,
+  uploadUserDataToDrive,
+  downloadUserDataFromDrive,
+  isSignedInToGoogle,
+  signInToGoogle,
+  signOutFromGoogle,
+  autoSyncUserData,
+} from "../services/googleDrive";
 
 interface CompetitiveUserContextType {
   user: CompetitiveUser | null;
@@ -12,6 +21,11 @@ interface CompetitiveUserContextType {
   addTestResult: (result: TestResult) => void;
   getTestAttempts: (testId: string) => number;
   getLastScore: (testId: string) => number | undefined;
+  // Google Drive sync methods
+  isGoogleDriveSynced: boolean;
+  syncWithGoogleDrive: () => Promise<void>;
+  disconnectGoogleDrive: () => Promise<void>;
+  lastSyncTime: Date | null;
 }
 
 const CompetitiveUserContext = createContext<CompetitiveUserContextType | undefined>(undefined);
@@ -23,31 +37,69 @@ const ADMIN_EMAIL = "jiteshshahpgtcs2@gmail.com";
 export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<CompetitiveUser | null>(null);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [isGoogleDriveSynced, setIsGoogleDriveSynced] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
+  // Initialize Google Drive API on mount
+  useEffect(() => {
+    initGoogleDrive().catch(console.error);
+  }, []);
+
+  // Check if user is signed in to Google Drive
+  useEffect(() => {
+    const checkGoogleSignIn = () => {
+      setIsGoogleDriveSynced(isSignedInToGoogle());
+    };
+    checkGoogleSignIn();
+    const interval = setInterval(checkGoogleSignIn, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   // Load user and results from localStorage on mount
   useEffect(() => {
-    // Try to load the last logged-in user
-    const lastUserEmail = localStorage.getItem('last_competitive_user_email');
-    if (lastUserEmail) {
-      const storedUser = localStorage.getItem(STORAGE_KEY_PREFIX + lastUserEmail);
-      const storedResults = localStorage.getItem(RESULTS_KEY_PREFIX + lastUserEmail);
-      
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          console.error("Failed to parse stored user:", e);
+    const loadUserData = async () => {
+      // Try to load the last logged-in user
+      const lastUserEmail = localStorage.getItem('last_competitive_user_email');
+      if (lastUserEmail) {
+        // First try to load from Google Drive if signed in
+        if (isSignedInToGoogle()) {
+          try {
+            const driveData = await downloadUserDataFromDrive(lastUserEmail);
+            if (driveData) {
+              setUser(driveData.userData);
+              setTestResults(driveData.testResults);
+              setLastSyncTime(new Date());
+              console.log('User data loaded from Google Drive');
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to load from Google Drive, falling back to localStorage:', error);
+          }
+        }
+
+        // Fallback to localStorage
+        const storedUser = localStorage.getItem(STORAGE_KEY_PREFIX + lastUserEmail);
+        const storedResults = localStorage.getItem(RESULTS_KEY_PREFIX + lastUserEmail);
+        
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (e) {
+            console.error("Failed to parse stored user:", e);
+          }
+        }
+        
+        if (storedResults) {
+          try {
+            setTestResults(JSON.parse(storedResults));
+          } catch (e) {
+            console.error("Failed to parse stored results:", e);
+          }
         }
       }
-      
-      if (storedResults) {
-        try {
-          setTestResults(JSON.parse(storedResults));
-        } catch (e) {
-          console.error("Failed to parse stored results:", e);
-        }
-      }
-    }
+    };
+
+    loadUserData();
   }, []);
 
   // Save user to localStorage whenever it changes
@@ -55,15 +107,37 @@ export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = 
     if (user) {
       localStorage.setItem(STORAGE_KEY_PREFIX + user.email, JSON.stringify(user));
       localStorage.setItem('last_competitive_user_email', user.email);
+      
+      // Auto-sync to Google Drive if connected
+      if (isGoogleDriveSynced) {
+        autoSyncUserData(user.email, user, testResults)
+          .then((success) => {
+            if (success) {
+              setLastSyncTime(new Date());
+            }
+          })
+          .catch(console.error);
+      }
     }
-  }, [user]);
+  }, [user, isGoogleDriveSynced]);
 
   // Save results to localStorage whenever they change
   useEffect(() => {
     if (user && testResults.length > 0) {
       localStorage.setItem(RESULTS_KEY_PREFIX + user.email, JSON.stringify(testResults));
+      
+      // Auto-sync to Google Drive if connected
+      if (isGoogleDriveSynced) {
+        autoSyncUserData(user.email, user, testResults)
+          .then((success) => {
+            if (success) {
+              setLastSyncTime(new Date());
+            }
+          })
+          .catch(console.error);
+      }
     }
-  }, [testResults, user]);
+  }, [testResults, user, isGoogleDriveSynced]);
 
   const login = (userData: Omit<CompetitiveUser, "selectedExams">) => {
     // Check if user already exists in localStorage
@@ -136,6 +210,37 @@ export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = 
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
+  // Google Drive sync methods
+  const syncWithGoogleDrive = async () => {
+    try {
+      if (!isSignedInToGoogle()) {
+        await signInToGoogle();
+        setIsGoogleDriveSynced(true);
+      }
+
+      if (user) {
+        await uploadUserDataToDrive(user.email, user, testResults);
+        setLastSyncTime(new Date());
+        console.log('Data synced with Google Drive');
+      }
+    } catch (error) {
+      console.error('Failed to sync with Google Drive:', error);
+      throw error;
+    }
+  };
+
+  const disconnectGoogleDrive = async () => {
+    try {
+      await signOutFromGoogle();
+      setIsGoogleDriveSynced(false);
+      setLastSyncTime(null);
+      console.log('Disconnected from Google Drive');
+    } catch (error) {
+      console.error('Failed to disconnect from Google Drive:', error);
+      throw error;
+    }
+  };
+
   // Debug log
   useEffect(() => {
     if (user) {
@@ -159,6 +264,10 @@ export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = 
         addTestResult,
         getTestAttempts,
         getLastScore,
+        isGoogleDriveSynced,
+        syncWithGoogleDrive,
+        disconnectGoogleDrive,
+        lastSyncTime,
       }}
     >
       {children}

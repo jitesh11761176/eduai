@@ -25,6 +25,8 @@
 - **Real-time Discussions** - Collaborate with peers and instructors
 - **Project Workspaces** - Manage assignments and group projects
 - **Career Center** - Industry-recognized micro-credentials and career guidance
+- **Competitive Exam Prep** - Comprehensive preparation for SSC, UPSC, NDA, and more
+- **Google Drive Backup** - Automatic cloud sync of test history and progress across devices
 
 ### 👨‍🏫 For Teachers
 - **AI Lesson Planner** - Generate complete lesson plans in seconds
@@ -60,10 +62,28 @@
 
 3. **Set up environment variables**
    
-   Create a `.env.local` file in the root directory:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
    ```
+   
+   Then edit `.env` with your credentials:
+   ```env
+   # Firebase Configuration
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   # ... other Firebase config
+   
+   # Google Gemini AI
+   VITE_GEMINI_API_KEY=your_gemini_api_key
+   
+   # Google Drive API (Optional - for user data backup)
+   VITE_GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+   VITE_GOOGLE_API_KEY=your_api_key
+   ```
+   
+   📖 **For Google Drive setup**, see [GOOGLE_DRIVE_SETUP.md](./GOOGLE_DRIVE_SETUP.md)
 
 4. **Run the development server**
    ```bash

@@ -4,6 +4,7 @@ import { getCompetitiveExams, validateExamData } from "../../data/competitive";
 import { generatePerformanceSnapshot, getGuidanceFromPerformance, getNextRecommendedTest } from "../../utils/competitiveGuidance";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { subscribeToCompetitiveExams } from "../../services/firebase";
+import GoogleDriveSyncButton from "./GoogleDriveSyncButton";
 
 interface CompetitiveDashboardProps {
   navigate: (view: string, context?: any) => void;
@@ -179,6 +180,11 @@ const CompetitiveDashboard: React.FC<CompetitiveDashboardProps> = ({ navigate })
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Google Drive Sync Section */}
+        <div className="mb-8">
+          <GoogleDriveSyncButton />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Stats Cards */}
           <div className="bg-white rounded-xl shadow-sm p-6">
