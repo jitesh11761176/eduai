@@ -37,6 +37,7 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
 
   // Get user data from localStorage
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [allTestResults, setAllTestResults] = useState<any[]>([]);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -58,16 +59,29 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
   useEffect(() => {
     // Load all competitive users from localStorage
     const users: any[] = [];
+    const results: any[] = [];
+    
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key?.startsWith("competitive_user")) {
+      if (key?.startsWith("competitive_user_")) {
         try {
           const user = JSON.parse(localStorage.getItem(key) || "");
           users.push(user);
-        } catch (e) {}
+          
+          // Also load their test results
+          const email = key.replace("competitive_user_", "");
+          const userResults = localStorage.getItem(`competitive_test_results_${email}`);
+          if (userResults) {
+            const parsed = JSON.parse(userResults);
+            results.push(...parsed);
+          }
+        } catch (e) {
+          console.error("Failed to parse user data:", e);
+        }
       }
     }
     setAllUsers(users);
+    setAllTestResults(results);
   }, []);
 
   if (!isAdmin) {
@@ -269,32 +283,35 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
 
   const handleDeleteUser = (userEmail: string) => {
     if (confirm(`Are you sure you want to delete all data for ${userEmail}? This action cannot be undone.`)) {
-      // Find and remove user from localStorage
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith("competitive_user")) {
-          try {
-            const user = JSON.parse(localStorage.getItem(key) || "");
-            if (user.email === userEmail) {
-              localStorage.removeItem(key);
-              break;
-            }
-          } catch (e) {}
-        }
-      }
+      // Remove user data and test results
+      localStorage.removeItem(`competitive_user_${userEmail}`);
+      localStorage.removeItem(`competitive_test_results_${userEmail}`);
       
       // Refresh user list
       const users: any[] = [];
+      const results: any[] = [];
+      
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key?.startsWith("competitive_user")) {
+        if (key?.startsWith("competitive_user_")) {
           try {
             const user = JSON.parse(localStorage.getItem(key) || "");
             users.push(user);
-          } catch (e) {}
+            
+            // Also load their test results
+            const email = key.replace("competitive_user_", "");
+            const userResults = localStorage.getItem(`competitive_test_results_${email}`);
+            if (userResults) {
+              const parsed = JSON.parse(userResults);
+              results.push(...parsed);
+            }
+          } catch (e) {
+            console.error("Failed to parse user data:", e);
+          }
         }
       }
       setAllUsers(users);
+      setAllTestResults(results);
       alert("User data deleted successfully!");
     }
   };
@@ -565,15 +582,21 @@ const CompetitiveAdminDashboard: React.FC<CompetitiveAdminDashboardProps> = ({ n
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {allUsers.map((user, index) => {
-                    const userAttempts = testResults.filter((r) =>
+                    const userAttempts = allTestResults.filter((r) =>
                       user.selectedExams?.includes(r.examId)
                     ).length;
+                    
+                    // Get exam names from IDs
+                    const examNames = user.selectedExams?.map((examId: string) => 
+                      exams.find(e => e.id === examId)?.name || examId
+                    ).join(", ") || "None";
+                    
                     return (
                       <tr key={index} className="hover:bg-slate-50">
                         <td className="px-6 py-4 text-slate-900">{user.name}</td>
                         <td className="px-6 py-4 text-slate-600">{user.email}</td>
                         <td className="px-6 py-4 text-slate-600">
-                          {user.selectedExams?.join(", ") || "None"}
+                          {examNames}
                         </td>
                         <td className="px-6 py-4 text-slate-900 font-semibold">{userAttempts}</td>
                         <td className="px-6 py-4 text-right">

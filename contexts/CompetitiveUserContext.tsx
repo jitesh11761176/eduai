@@ -16,8 +16,8 @@ interface CompetitiveUserContextType {
 
 const CompetitiveUserContext = createContext<CompetitiveUserContextType | undefined>(undefined);
 
-const STORAGE_KEY = "competitive_user";
-const RESULTS_KEY = "competitive_test_results";
+const STORAGE_KEY_PREFIX = "competitive_user_";
+const RESULTS_KEY_PREFIX = "competitive_test_results_";
 const ADMIN_EMAIL = "jiteshshahpgtcs2@gmail.com";
 
 export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,22 +26,26 @@ export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = 
 
   // Load user and results from localStorage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEY);
-    const storedResults = localStorage.getItem(RESULTS_KEY);
-    
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse stored user:", e);
+    // Try to load the last logged-in user
+    const lastUserEmail = localStorage.getItem('last_competitive_user_email');
+    if (lastUserEmail) {
+      const storedUser = localStorage.getItem(STORAGE_KEY_PREFIX + lastUserEmail);
+      const storedResults = localStorage.getItem(RESULTS_KEY_PREFIX + lastUserEmail);
+      
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error("Failed to parse stored user:", e);
+        }
       }
-    }
-    
-    if (storedResults) {
-      try {
-        setTestResults(JSON.parse(storedResults));
-      } catch (e) {
-        console.error("Failed to parse stored results:", e);
+      
+      if (storedResults) {
+        try {
+          setTestResults(JSON.parse(storedResults));
+        } catch (e) {
+          console.error("Failed to parse stored results:", e);
+        }
       }
     }
   }, []);
@@ -49,31 +53,62 @@ export const CompetitiveUserProvider: React.FC<{ children: React.ReactNode }> = 
   // Save user to localStorage whenever it changes
   useEffect(() => {
     if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(STORAGE_KEY_PREFIX + user.email, JSON.stringify(user));
+      localStorage.setItem('last_competitive_user_email', user.email);
     }
   }, [user]);
 
   // Save results to localStorage whenever they change
   useEffect(() => {
-    if (testResults.length > 0) {
-      localStorage.setItem(RESULTS_KEY, JSON.stringify(testResults));
+    if (user && testResults.length > 0) {
+      localStorage.setItem(RESULTS_KEY_PREFIX + user.email, JSON.stringify(testResults));
     }
-  }, [testResults]);
+  }, [testResults, user]);
 
   const login = (userData: Omit<CompetitiveUser, "selectedExams">) => {
-    setUser({
-      ...userData,
-      selectedExams: [],
-    });
+    // Check if user already exists in localStorage
+    const existingUserData = localStorage.getItem(STORAGE_KEY_PREFIX + userData.email);
+    const existingResults = localStorage.getItem(RESULTS_KEY_PREFIX + userData.email);
+    
+    if (existingUserData) {
+      // Load existing user data
+      try {
+        const parsedUser = JSON.parse(existingUserData);
+        setUser(parsedUser);
+      } catch (e) {
+        setUser({
+          ...userData,
+          selectedExams: [],
+        });
+      }
+    } else {
+      // New user
+      setUser({
+        ...userData,
+        selectedExams: [],
+      });
+    }
+    
+    // Load test results
+    if (existingResults) {
+      try {
+        setTestResults(JSON.parse(existingResults));
+      } catch (e) {
+        setTestResults([]);
+      }
+    } else {
+      setTestResults([]);
+    }
   };
 
   const logout = () => {
+    if (user) {
+      // Keep user data in localStorage for admin to see
+      // Just clear the current session
+      localStorage.removeItem('last_competitive_user_email');
+    }
     setUser(null);
     setTestResults([]);
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(RESULTS_KEY);
   };
 
   const updateSelectedExams = (exams: string[]) => {
